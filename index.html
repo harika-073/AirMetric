@@ -1,21 +1,93 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AirWatch | Air Quality Monitoring</title>
-  <meta name="description" content="AirWatch air quality sensor readings and historical analysis DBMS project">
+  <meta name="description" content="AirMetric air quality monitoring and analysis platform">
+  <title>AirMetric | Air Quality Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="script.js" defer></script>
 </head>
 <body>
-  <div class="layout">
+
+  <!-- AUTHENTICATION -->
+  <section id="auth-screen" class="auth-screen">
+    <div class="auth-decoration decor-one"></div>
+    <div class="auth-decoration decor-two"></div>
+
+    <div class="auth-shell">
+      <div class="auth-brand">
+        <div class="brand-mark">A<span>•</span></div>
+        <div>
+          <strong>AirMetric</strong>
+          <small>AIR QUALITY INTELLIGENCE</small>
+        </div>
+      </div>
+
+      <div class="auth-card">
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-role="admin">Admin</button>
+          <button class="auth-tab" data-role="user">User</button>
+        </div>
+
+        <div class="auth-heading">
+          <span class="eyebrow">WELCOME TO AIRMETRIC</span>
+          <h1 id="auth-title">Admin Login</h1>
+          <p id="auth-subtitle">Sign in to manage air quality data and monitoring stations.</p>
+        </div>
+
+        <div class="auth-mode">
+          <button id="mode-login" class="mode-btn active">Sign In</button>
+          <button id="mode-signup" class="mode-btn">Create Account</button>
+        </div>
+
+        <form id="auth-form">
+          <label id="name-field" class="field" hidden>
+            Full Name
+            <input id="auth-name" type="text" maxlength="80" placeholder="Enter your name">
+          </label>
+
+          <label class="field">
+            Email Address
+            <input id="auth-email" type="email" placeholder="you@example.com" autocomplete="username" required>
+          </label>
+
+          <label class="field">
+            Password
+            <input id="auth-password" type="password" minlength="8" placeholder="At least 8 characters" autocomplete="current-password" required>
+          </label>
+
+          <label id="confirm-field" class="field" hidden>
+            Confirm Password
+            <input id="auth-confirm" type="password" minlength="8" placeholder="Re-enter password">
+          </label>
+
+          <button type="submit" class="btn btn-primary auth-submit" id="auth-submit">Sign In as Admin</button>
+          <p id="auth-message" class="auth-message" role="status"></p>
+        </form>
+
+        <div class="auth-note">
+          <span class="security-icon">◇</span>
+          <span id="role-note">Admin access includes management controls.</span>
+        </div>
+      </div>
+
+      <p class="auth-footer">AirMetric · Environmental Monitoring System</p>
+    </div>
+  </section>
+
+  <!-- APPLICATION -->
+  <div id="app-shell" class="layout" hidden>
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-icon">A</div>
-        <div><strong>AirWatch</strong><small>ENVIRONMENTAL INTELLIGENCE</small></div>
+        <div>
+          <strong>AirMetric</strong>
+          <small>ENVIRONMENTAL INTELLIGENCE</small>
+        </div>
       </div>
 
       <div class="menu-label">WORKSPACE</div>
@@ -28,19 +100,26 @@
 
       <div class="sidebar-bottom">
         <div class="status-dot"></div>
-        <div><strong>Demo Mode</strong><small>Illustrative sample data</small></div>
+        <div>
+          <strong>Monitoring Active</strong>
+          <small>Air quality workspace</small>
+        </div>
       </div>
     </aside>
 
     <main class="main">
       <header class="topbar">
         <div>
-          <div class="breadcrumb">AIRWATCH / <span id="crumb">DASHBOARD</span></div>
+          <div class="breadcrumb">AIRMETRIC / <span id="crumb">DASHBOARD</span></div>
           <h1 id="page-title">Air Quality Dashboard</h1>
         </div>
         <div class="top-actions">
-          <span class="live-label"><i></i> DEMO DATA</span>
-          <div class="avatar">AW</div>
+          <div class="user-meta">
+            <strong id="current-user-name">Account</strong>
+            <span id="current-user-role">USER</span>
+          </div>
+          <div class="avatar" id="user-avatar">A</div>
+          <button class="btn btn-outline btn-small" id="logout-button">Log Out</button>
         </div>
       </header>
 
@@ -80,7 +159,7 @@
         <div class="chart-grid">
           <article class="panel chart-panel">
             <div class="panel-heading">
-              <div><h3>AQI Trend</h3><p>Air quality index over recorded readings</p></div>
+              <div><h3>AQI Trend</h3><p>Air quality index across recorded readings</p></div>
               <span class="pill">Historical</span>
             </div>
             <div class="chart-wrap"><canvas id="aqiChart"></canvas></div>
@@ -95,7 +174,7 @@
 
         <article class="panel">
           <div class="panel-heading">
-            <div><h3>Latest Sensor Readings</h3><p>Recent illustrative observations</p></div>
+            <div><h3>Latest Sensor Readings</h3><p>Recently recorded air quality measurements</p></div>
             <button class="btn btn-outline" data-goto="readings">View History →</button>
           </div>
           <div class="table-scroll">
@@ -109,10 +188,9 @@
 
       <section class="page" id="sensors">
         <div class="page-intro">
-          <div><h2>Sensor Management</h2><p>Register, search, update and remove monitoring stations.</p></div>
-          <button class="btn btn-primary" id="add-sensor">+ Add Sensor</button>
+          <div><h2>Sensor Management</h2><p>View and manage air quality monitoring stations.</p></div>
+          <button class="btn btn-primary admin-only" id="add-sensor">+ Add Sensor</button>
         </div>
-
         <div class="toolbar">
           <input id="sensor-search" placeholder="Search sensor or location...">
           <select id="sensor-status-filter">
@@ -122,17 +200,15 @@
             <option value="Maintenance">Maintenance</option>
           </select>
         </div>
-
         <article class="panel">
           <div class="table-scroll">
             <table>
-              <thead><tr><th>ID</th><th>Sensor Name</th><th>Location</th><th>Status</th><th>Actions</th></tr></thead>
+              <thead><tr><th>ID</th><th>Sensor Name</th><th>Location</th><th>Status</th><th class="admin-only">Actions</th></tr></thead>
               <tbody id="sensors-table"></tbody>
             </table>
           </div>
         </article>
-
-        <div class="panel form-panel" id="sensor-form-panel" hidden>
+        <div class="panel form-panel admin-only" id="sensor-form-panel" hidden>
           <h3 id="sensor-form-title">Add Sensor</h3>
           <form id="sensor-form">
             <input type="hidden" id="sensor-id">
@@ -143,40 +219,39 @@
               <label>Longitude<input id="sensor-lon" type="number" min="-180" max="180" step="any" required></label>
               <label>Status<select id="sensor-status"><option>Active</option><option>Inactive</option><option>Maintenance</option></select></label>
             </div>
-            <div class="form-actions"><button type="submit" class="btn btn-primary">Save Sensor</button><button type="button" class="btn btn-outline" id="cancel-sensor">Cancel</button></div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Save Sensor</button>
+              <button type="button" class="btn btn-outline" id="cancel-sensor">Cancel</button>
+            </div>
           </form>
         </div>
       </section>
 
       <section class="page" id="readings">
         <div class="page-intro">
-          <div><h2>Historical Readings</h2><p>Filter recorded observations and add new readings.</p></div>
-          <button class="btn btn-primary" id="add-reading">+ Add Reading</button>
+          <div><h2>Historical Readings</h2><p>Explore and filter air quality measurements.</p></div>
+          <button class="btn btn-primary admin-only" id="add-reading">+ Add Reading</button>
         </div>
-
         <div class="panel filters">
           <label>Sensor<select id="reading-sensor-filter"><option value="">All sensors</option></select></label>
           <label>From date<input type="date" id="date-from"></label>
           <label>To date<input type="date" id="date-to"></label>
           <button class="btn btn-outline" id="clear-filters">Clear Filters</button>
         </div>
-
         <div class="stats-grid compact">
           <article class="stat-card"><div class="stat-top">Average AQI</div><div class="stat-value" id="avg-aqi">--</div></article>
           <article class="stat-card"><div class="stat-top">Highest AQI</div><div class="stat-value" id="max-aqi">--</div></article>
           <article class="stat-card"><div class="stat-top">Records Found</div><div class="stat-value" id="record-count">0</div></article>
         </div>
-
         <article class="panel">
           <div class="table-scroll">
             <table>
-              <thead><tr><th>ID</th><th>Sensor</th><th>Recorded At</th><th>PM2.5</th><th>PM10</th><th>CO₂</th><th>AQI</th><th>Actions</th></tr></thead>
+              <thead><tr><th>ID</th><th>Sensor</th><th>Recorded At</th><th>PM2.5</th><th>PM10</th><th>CO₂</th><th>AQI</th><th class="admin-only">Actions</th></tr></thead>
               <tbody id="readings-table"></tbody>
             </table>
           </div>
         </article>
-
-        <div class="panel form-panel" id="reading-form-panel" hidden>
+        <div class="panel form-panel admin-only" id="reading-form-panel" hidden>
           <h3 id="reading-form-title">Add Reading</h3>
           <form id="reading-form">
             <input type="hidden" id="reading-id">
@@ -188,28 +263,35 @@
               <label>CO₂ (ppm)<input id="reading-co2" type="number" min="0" step="any" required></label>
               <label>AQI<input id="reading-aqi" type="number" min="0" max="500" required></label>
             </div>
-            <p class="hint">AQI is entered manually in this demo. Real applications should calculate or validate it using a documented standard.</p>
-            <div class="form-actions"><button type="submit" class="btn btn-primary">Save Reading</button><button type="button" class="btn btn-outline" id="cancel-reading">Cancel</button></div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Save Reading</button>
+              <button type="button" class="btn btn-outline" id="cancel-reading">Cancel</button>
+            </div>
           </form>
         </div>
       </section>
 
       <section class="page" id="alerts">
-        <div class="page-intro"><div><h2>Pollution Alerts</h2><p>Review readings that exceed the demo AQI threshold of 150.</p></div></div>
+        <div class="page-intro"><div><h2>Pollution Alerts</h2><p>Review readings that exceed the AQI threshold of 150.</p></div></div>
         <div class="stats-grid compact">
           <article class="stat-card"><div class="stat-top">Total Alerts</div><div class="stat-value" id="total-alerts">0</div></article>
           <article class="stat-card"><div class="stat-top">Unresolved</div><div class="stat-value" id="unresolved-alerts">0</div></article>
         </div>
         <article class="panel">
           <div class="table-scroll">
-            <table><thead><tr><th>Alert ID</th><th>Sensor</th><th>Location</th><th>AQI</th><th>Severity</th><th>Time</th><th>Status</th><th>Action</th></tr></thead>
-            <tbody id="alerts-table"></tbody></table>
+            <table>
+              <thead><tr><th>Alert ID</th><th>Sensor</th><th>Location</th><th>AQI</th><th>Severity</th><th>Time</th><th>Status</th><th class="admin-only">Action</th></tr></thead>
+              <tbody id="alerts-table"></tbody>
+            </table>
           </div>
         </article>
       </section>
 
       <section class="page" id="reports">
-        <div class="page-intro"><div><h2>Reports & Analytics</h2><p>Summaries calculated from the current demo readings.</p></div><button class="btn btn-primary" id="export-csv">↓ Export CSV</button></div>
+        <div class="page-intro">
+          <div><h2>Reports & Analytics</h2><p>Summaries calculated from recorded readings.</p></div>
+          <button class="btn btn-primary" id="export-csv">↓ Export CSV</button>
+        </div>
         <div class="stats-grid compact">
           <article class="stat-card"><div class="stat-top">Highest AQI Location</div><div class="stat-value report-value" id="worst-location">--</div></article>
           <article class="stat-card"><div class="stat-top">Overall Average AQI</div><div class="stat-value" id="overall-average">--</div></article>
@@ -226,10 +308,10 @@
       </section>
 
       <section class="page" id="docs">
-        <div class="page-intro"><div><h2>DBMS Documentation</h2><p>Academic design for AirWatch.</p></div></div>
+        <div class="page-intro"><div><h2>DBMS Documentation</h2><p>Database design and project reference.</p></div></div>
         <article class="panel documentation">
           <h3>1. Project Abstract</h3>
-          <p>AirWatch is an air-quality monitoring and historical analysis system designed to organize sensor stations, air-quality readings, and pollution alerts in a relational database.</p>
+          <p>AirMetric is an air-quality monitoring and historical analysis system designed to organize sensor stations, air-quality readings and pollution alerts using a relational database model.</p>
           <h3>2. ER Relationships</h3>
           <div class="er-box">
             <div class="er-entity"><strong>USERS</strong><br>PK user_id<br>name, email<br>password_hash, role</div>
@@ -237,94 +319,772 @@
             <div class="er-entity"><strong>READINGS</strong><br>PK reading_id<br>FK sensor_id<br>recorded_at, pm25, pm10<br>co2, aqi</div>
             <div class="er-entity"><strong>ALERTS</strong><br>PK alert_id<br>FK sensor_id<br>FK reading_id<br>alert_type, severity, status</div>
           </div>
-          <p><strong>Relationships:</strong> One sensor has many readings. One sensor can have many alerts. A reading can generate zero or more alerts. Users are stored separately for authentication and authorization.</p>
+          <p><strong>Relationships:</strong> One sensor has many readings. One sensor can have many alerts. A reading can generate alerts. Users are stored separately for authentication and authorization.</p>
           <h3>3. Functional Dependencies</h3>
           <ul>
-            <li><strong>Users:</strong> user_id → name, email, password_hash, role, created_at. Also, email → user_id, name, password_hash, role, created_at because email is unique.</li>
+            <li><strong>Users:</strong> user_id → name, email, password_hash, role, created_at.</li>
             <li><strong>Sensors:</strong> sensor_id → sensor_name, location, latitude, longitude, status, created_at.</li>
             <li><strong>Readings:</strong> reading_id → sensor_id, recorded_at, pm25, pm10, co2, aqi.</li>
             <li><strong>Alerts:</strong> alert_id → sensor_id, reading_id, alert_type, message, severity, created_at, status.</li>
           </ul>
           <h3>4. Normalization</h3>
-          <p><strong>1NF:</strong> Each field stores a single value, and each row has a unique primary key.</p>
-          <p><strong>2NF:</strong> Each table uses a single-column primary key, so there are no partial dependencies on part of a composite primary key.</p>
-          <p><strong>3NF:</strong> Non-key attributes depend on the key, the whole key, and nothing but the key. Sensor details are stored in sensors rather than repeated in every reading. User details are stored separately.</p>
+          <p><strong>1NF:</strong> Each field stores one value and every row has a unique key.</p>
+          <p><strong>2NF:</strong> Each table uses a single-column primary key, avoiding partial dependencies.</p>
+          <p><strong>3NF:</strong> Sensor details are stored in sensors rather than repeated in readings. User details are stored separately.</p>
           <h3>5. SQL CRUD Examples</h3>
-          <pre><code>-- CREATE
-INSERT INTO sensors
+          <pre><code>INSERT INTO sensors
 (sensor_name, location, latitude, longitude, status)
-VALUES ('Sensor A', 'Campus', 16.30, 80.45, 'Active');
+VALUES ('Sensor A', 'Campus', 17.385, 78.486, 'Active');
 
--- READ
 SELECT * FROM sensors;
 
--- UPDATE
 UPDATE sensors SET status = 'Inactive'
 WHERE sensor_id = 1;
 
--- DELETE
 DELETE FROM sensors WHERE sensor_id = 1;
 
--- AGGREGATE REPORT
 SELECT sensor_id, AVG(aqi) AS average_aqi,
 MAX(aqi) AS highest_aqi
 FROM readings GROUP BY sensor_id;</code></pre>
-          <h3>6. Views and Transactions (MySQL)</h3>
+          <h3>6. Sample View</h3>
           <pre><code>CREATE VIEW daily_air_quality_summary AS
 SELECT DATE(recorded_at) AS reading_date,
 COUNT(*) AS total_readings,
 AVG(aqi) AS average_aqi,
 MAX(aqi) AS highest_aqi
 FROM readings
-GROUP BY DATE(recorded_at);
-
-CREATE VIEW sensor_reading_summary AS
-SELECT s.sensor_id, s.sensor_name, s.location,
-COUNT(r.reading_id) AS total_readings,
-AVG(r.aqi) AS average_aqi,
-MAX(r.aqi) AS highest_aqi
-FROM sensors s
-LEFT JOIN readings r ON s.sensor_id = r.sensor_id
-GROUP BY s.sensor_id, s.sensor_name, s.location;
-
--- Transaction demonstration (run in MySQL)
-START TRANSACTION;
-INSERT INTO readings
-(sensor_id, recorded_at, pm25, pm10, co2, aqi)
-VALUES (1, NOW(), 40, 70, 450, 160);
-
-SET @new_reading_id = LAST_INSERT_ID();
-
-INSERT INTO alerts
-(sensor_id, reading_id, alert_type, message, severity, status)
-VALUES (1, @new_reading_id, 'HIGH_AQI',
-'AQI threshold exceeded', 'High', 'Open');
-
-COMMIT;
-
--- For a test that should be undone:
-START TRANSACTION;
-INSERT INTO readings
-(sensor_id, recorded_at, pm25, pm10, co2, aqi)
-VALUES (1, NOW(), 10, 20, 400, 40);
-ROLLBACK;</code></pre>
-          <p class="warning-note">Run these SQL examples in your actual MySQL database after creating the required tables. The website's demonstration data is not connected to MySQL.</p>
+GROUP BY DATE(recorded_at);</code></pre>
           <h3>7. Testing Checklist</h3>
           <ul>
-            <li>☐ Add, search, edit, and delete a sensor.</li>
-            <li>☐ Add, filter, edit, and delete a reading.</li>
-            <li>☐ Verify chart and report updates.</li>
-            <li>☐ Resolve an alert and check the open-alert count.</li>
-            <li>☐ Test MySQL views and transaction rollback in a database client.</li>
-            <li>☐ After backend integration, test login, authorization, and persistence after refresh.</li>
+            <li>Add, search, edit and delete a sensor using Admin access.</li>
+            <li>Add, filter, edit and delete a reading using Admin access.</li>
+            <li>Verify chart and report updates.</li>
+            <li>Resolve an alert and check alert counts.</li>
+            <li>Verify User access is read-only.</li>
+            <li>Test login and persistence after refresh.</li>
           </ul>
         </article>
       </section>
 
-      <footer>AirWatch © 2026 · College DBMS Project · <span>Frontend demonstration</span></footer>
+      <footer>AirMetric © 2026 · College DBMS Project</footer>
     </main>
   </div>
 
   <div id="toast" class="toast" role="status"></div>
 </body>
 </html>
+'''
+
+style_css = r'''@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+:root{--bg:#08111f;--sidebar:#0b1525;--panel:#101d30;--panel2:#14243a;--border:#23344b;--text:#edf4ff;--muted:#91a2bb;--blue:#58a6ff;--green:#39d9a0;--yellow:#f5ca58;--orange:#ff9c52;--red:#ff6879}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--text);font:14px 'DM Sans',sans-serif}
+button,input,select{font:inherit}button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.auth-screen{min-height:100vh;display:grid;place-items:center;position:relative;overflow:hidden;padding:28px 18px;background:radial-gradient(ellipse at 15% 15%,#15344a 0,transparent 36%),radial-gradient(ellipse at 85% 85%,#102d3b 0,transparent 34%),#08111f}
+.auth-decoration{position:absolute;border:1px solid #24465a55;border-radius:50%;pointer-events:none}
+.decor-one{width:520px;height:520px;right:-180px;top:-190px}.decor-two{width:380px;height:380px;left:-190px;bottom:-170px}
+.auth-shell{width:min(100%,460px);position:relative;z-index:1}
+.auth-brand{display:flex;align-items:center;gap:12px;margin:0 0 24px 8px}
+.brand-mark{height:45px;width:45px;display:grid;place-items:center;background:linear-gradient(140deg,#39d9a0,#1682e8);border-radius:14px;color:#071523;font:700 25px 'Space Grotesk';position:relative}
+.brand-mark span{color:#fff;font-size:14px;position:absolute;right:7px;top:5px}
+.auth-brand strong,.brand strong{display:block;font:700 22px 'Space Grotesk'}
+.auth-brand small,.brand small{display:block;color:var(--muted);font-size:9px;letter-spacing:1.4px;margin-top:4px}
+.auth-card{background:#101d30ed;border:1px solid #2b4057;border-radius:22px;padding:28px;box-shadow:0 28px 90px #0005;backdrop-filter:blur(14px)}
+.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:5px;background:#091522;border-radius:12px}
+.auth-tab,.mode-btn{border:0;color:var(--muted);background:transparent;border-radius:8px;padding:11px;font-weight:700}
+.auth-tab.active{background:#1b3448;color:var(--green)}
+.auth-heading{margin:27px 0 20px}
+.eyebrow{color:var(--green);font-size:10px;font-weight:700;letter-spacing:1.5px}
+.auth-heading h1{font:700 29px 'Space Grotesk';margin:9px 0}
+.auth-heading p,.panel-heading p,.page-intro p{color:var(--muted);line-height:1.6;margin:0}
+.auth-mode{display:flex;gap:8px;margin-bottom:20px}
+.mode-btn{flex:1;border:1px solid var(--border);padding:10px}
+.mode-btn.active{border-color:#39d9a066;background:#16372f;color:var(--green)}
+.field{display:block;font-size:12px;font-weight:700;color:#c6d4e7;margin:15px 0}
+.field input{display:block;width:100%;margin-top:8px;background:#0a1524;border:1px solid #2a3d53;color:var(--text);border-radius:10px;padding:13px 14px;outline:none}
+.field input:focus{border-color:var(--green)}
+.btn{border:0;border-radius:9px;padding:11px 15px;font-weight:700;transition:transform .18s,filter .18s}
+.btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-primary{background:linear-gradient(120deg,#39d9a0,#4db8e8);color:#061521}
+.btn-outline{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn-small{padding:9px 11px;font-size:12px}
+.auth-submit{width:100%;padding:14px;margin-top:5px}
+.auth-message{font-size:12px;min-height:17px;color:var(--red);line-height:1.5}
+.auth-message.success{color:var(--green)}
+.auth-note{display:flex;gap:10px;align-items:center;background:#0a1624;border:1px solid #20334a;border-radius:10px;padding:12px;color:var(--muted);font-size:11px;line-height:1.5}
+.security-icon{font-size:20px;color:var(--green)}
+.auth-footer{text-align:center;color:#71849d;font-size:11px;margin-top:22px}
+.layout{min-height:100vh}
+.sidebar{width:252px;background:var(--sidebar);border-right:1px solid var(--border);padding:27px 16px;position:fixed;inset:0 auto 0 0;display:flex;flex-direction:column;z-index:5;overflow-y:auto}
+.brand{display:flex;gap:12px;align-items:center;margin:0 4px 43px}
+.brand-icon{width:43px;height:43px;border-radius:13px;background:linear-gradient(140deg,#37d9a0,#1682e8);display:grid;place-items:center;color:#071523;font-weight:700;font-size:23px}
+.brand strong{font-size:21px}.brand small{font-size:8px}
+.menu-label,.breadcrumb{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:1.5px}
+.menu-label{margin:0 10px 13px}
+.nav{width:100%;display:flex;align-items:center;gap:13px;border:0;background:transparent;color:var(--muted);text-align:left;padding:13px 12px;margin:3px 0;border-radius:9px;transition:.2s}
+.nav span{font-size:13px}.nav:hover,.nav.active{background:#162941;color:var(--text)}.nav.active{box-shadow:inset 3px 0 var(--green)}.nav.active span{font-weight:700}
+.sidebar-bottom{display:flex;align-items:center;gap:11px;margin-top:auto;padding:18px 8px 0;border-top:1px solid var(--border);color:var(--text)}
+.sidebar-bottom strong{display:block;font-size:12px}.sidebar-bottom small{display:block;color:var(--muted);font-size:10px;margin-top:5px}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px #39d9a077}
+.main{margin-left:252px;padding:0 32px 25px;max-width:1800px}
+.topbar{min-height:104px;display:flex;justify-content:space-between;align-items:center;gap:20px;border-bottom:1px solid var(--border);margin-bottom:25px}
+.breadcrumb{font-size:9px}.breadcrumb span{color:var(--green)}
+.topbar h1{font:600 23px 'Space Grotesk';margin:8px 0 0}
+.top-actions{display:flex;align-items:center;gap:12px}.user-meta{text-align:right}.user-meta strong{display:block;font-size:12px}.user-meta span{font-size:9px;color:var(--green);letter-spacing:1px;display:block;margin-top:4px}
+.avatar{width:37px;height:37px;display:grid;place-items:center;background:#1b3448;color:var(--green);border-radius:12px;font-weight:700}
+.page{display:none}.page.active{display:block}
+.welcome{background:linear-gradient(110deg,#12392f,#10263a 65%,#17243b);border:1px solid #2a514d;border-radius:16px;padding:27px 30px;display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+.welcome h2{font:600 25px 'Space Grotesk';margin:10px 0}.welcome p:not(.eyebrow){color:#b1c6d7;margin:0}.welcome-icon{font-size:48px;background:#ffffff0b;border:1px solid #ffffff12;border-radius:18px;padding:14px}
+.stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;margin-bottom:20px}.stats-grid.compact{grid-template-columns:repeat(3,minmax(0,1fr));margin-top:18px}
+.stat-card,.panel{background:var(--panel);border:1px solid var(--border);border-radius:13px}
+.stat-card{padding:19px;min-width:0}.stat-top{display:flex;justify-content:space-between;align-items:center;color:#c2d0e2;font-size:12px;gap:8px}
+.stat-icon{height:30px;width:30px;display:grid;place-items:center;border-radius:9px}.stat-icon.blue{background:#58a6ff1c;color:var(--blue)}.stat-icon.green{background:#39d9a01c;color:var(--green)}.stat-icon.orange{background:#ff9c521c;color:var(--orange)}.stat-icon.red{background:#ff68791c;color:var(--red)}
+.stat-value{font:700 30px 'Space Grotesk';margin:14px 0 7px;overflow-wrap:anywhere}.stat-foot{font-size:10px;color:var(--muted)}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:17px;margin-bottom:19px}
+.panel{padding:20px;margin-bottom:18px;min-width:0}.chart-panel{min-width:0}
+.panel-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:17px}
+.panel-heading h3,.form-panel h3{font:600 16px 'Space Grotesk';margin:0 0 6px}.panel-heading p{font-size:11px}
+.pill{font-size:10px;color:var(--green);border:1px solid #39d9a044;background:#39d9a012;padding:6px 10px;border-radius:20px}
+.chart-wrap{height:250px;position:relative}
+.table-scroll{width:100%;overflow-x:auto}
+table{border-collapse:collapse;width:100%;white-space:nowrap;text-align:left}
+th{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;background:#0d1929}
+th,td{padding:13px 12px;border-bottom:1px solid #24354a}
+td{font-size:12px;color:#d9e4f3}tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#ffffff04}
+.badge{display:inline-block;padding:5px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.badge-good,.badge-active,.badge-resolved{background:#39d9a018;color:var(--green)}
+.badge-moderate{background:#f5ca581b;color:var(--yellow)}.badge-poor,.badge-maintenance{background:#ff9c521b;color:var(--orange)}
+.badge-severe,.badge-high,.badge-open{background:#ff68791b;color:var(--red)}.badge-inactive{background:#91a2bb1b;color:var(--muted)}
+.page-intro{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:8px 0 20px}
+.page-intro h2{font:600 23px 'Space Grotesk';margin:0 0 7px}.page-intro p{font-size:12px}
+.toolbar{display:flex;gap:12px;margin-bottom:17px}
+.toolbar input,.toolbar select,.filters input,.filters select{background:#0a1727;border:1px solid var(--border);border-radius:8px;padding:11px 12px;color:var(--text);min-width:0}
+.toolbar input{flex:1}.toolbar select{min-width:160px}
+.filters{display:flex;align-items:end;gap:13px;flex-wrap:wrap}
+.filters label,.form-grid label{display:flex;flex-direction:column;gap:8px;font-size:11px;color:#b9c9df;font-weight:700}
+.filters label{flex:1;min-width:140px}.filters input,.filters select{width:100%}
+.form-panel{margin-top:18px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:18px 0}
+.form-grid input,.form-grid select{width:100%;background:#0a1727;border:1px solid var(--border);border-radius:8px;padding:11px 12px;color:var(--text);min-width:0}
+.form-actions{display:flex;gap:10px;flex-wrap:wrap}.table-actions{display:flex;gap:7px}
+.mini-btn{border:1px solid #31475e;border-radius:6px;background:#162941;color:#dbe8f7;padding:6px 9px;font-size:10px;font-weight:700}
+.mini-btn.delete{color:var(--red);border-color:#703746;background:#3a1c2b}
+.empty{text-align:center;color:var(--muted);padding:24px}
+.report-value{font-size:18px}
+.documentation h3{font:600 16px 'Space Grotesk';margin:25px 0 10px}.documentation h3:first-child{margin-top:0}
+.documentation p,.documentation li{color:#b8c8dc;line-height:1.8;font-size:12px}
+.documentation pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#091522;border:1px solid var(--border);padding:17px;border-radius:10px;color:#a9e7cd;line-height:1.7;font-size:11px}
+.er-box{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0}
+.er-entity{background:#14263a;border:1px solid #2a435b;border-radius:9px;padding:13px;font-size:10px;line-height:1.9;color:#b9c9df}
+.er-entity strong{color:var(--green);font-size:12px}
+footer{border-top:1px solid var(--border);margin-top:28px;padding:20px 0 8px;text-align:center;color:#6f829c;font-size:10px}
+.toast{position:fixed;bottom:24px;right:24px;z-index:30;background:#17372f;border:1px solid #39d9a077;color:#dffff2;padding:13px 18px;border-radius:10px;box-shadow:0 12px 40px #0005;opacity:0;transform:translateY(12px);pointer-events:none;transition:.2s;max-width:min(90vw,420px)}
+.toast.show{opacity:1;transform:translateY(0)}
+body.user-mode .admin-only{display:none!important}
+@media(max-width:1100px){.sidebar{width:215px}.main{margin-left:215px;padding:0 22px 22px}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.chart-grid{grid-template-columns:1fr}.er-box{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.sidebar{position:relative;width:100%;inset:auto;padding:16px;display:block;border-right:0;border-bottom:1px solid var(--border)}.brand{margin:0 0 18px}.menu-label{margin-bottom:8px}.sidebar .nav{display:inline-flex;width:auto;margin:3px;padding:10px}.nav span{font-size:11px}.sidebar-bottom{margin-top:14px}.main{margin-left:0;padding:0 14px 20px}.topbar{align-items:flex-start;padding:20px 0;flex-direction:column}.top-actions{width:100%;justify-content:flex-end;flex-wrap:wrap}.topbar h1{font-size:20px}.welcome{padding:21px;gap:12px}.welcome h2{font-size:21px}.welcome-icon{font-size:32px;padding:9px}.stats-grid,.stats-grid.compact{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.stat-card{padding:14px}.stat-value{font-size:25px}.panel{padding:14px}.page-intro{align-items:flex-start;flex-direction:column}.page-intro h2{font-size:21px}.toolbar{flex-direction:column}.toolbar select{width:100%}.form-grid{grid-template-columns:1fr}.er-box{grid-template-columns:1fr 1fr}.auth-card{padding:21px}.auth-heading h1{font-size:25px}}
+@media(max-width:420px){.stats-grid,.stats-grid.compact{grid-template-columns:1fr 1fr}.stat-top{font-size:11px}.stat-foot{line-height:1.5}.user-meta{margin-right:auto}.er-box{grid-template-columns:1fr}.auth-heading h1{font-size:23px}}
+'''
+
+script_js = r'''const $ = id => document.getElementById(id);
+
+const STORE = {
+  accounts: "airmetric_accounts_v1",
+  sensors: "airmetric_sensors_v1",
+  readings: "airmetric_readings_v1",
+  resolved: "airmetric_resolved_v1",
+  session: "airmetric_session_v1"
+};
+
+let currentUser = null;
+let authRole = "admin";
+let authMode = "login";
+let sensors = [];
+let readings = [];
+let resolvedAlerts = new Set();
+let nextSensorId = 1;
+let nextReadingId = 1;
+let aqiChart = null;
+let pollutionChart = null;
+let toastTimer;
+
+function dateOffset(days, hour = 10) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  d.setHours(hour, 0, 0, 0);
+  return d.toISOString().slice(0, 16);
+}
+
+const initialSensors = [
+  {id:1,name:"Campus Central",location:"University Campus",lat:17.385,lon:78.486,status:"Active"},
+  {id:2,name:"Residential Monitor",location:"Residential Zone",lat:17.392,lon:78.481,status:"Active"},
+  {id:3,name:"Industrial Watch",location:"Industrial Area",lat:17.410,lon:78.520,status:"Maintenance"},
+  {id:4,name:"Green Park Sensor",location:"Green Park",lat:17.375,lon:78.470,status:"Inactive"}
+];
+
+const initialReadings = [
+  {id:1,sensorId:1,date:dateOffset(6,8),pm25:24,pm10:41,co2:420,aqi:65},
+  {id:2,sensorId:2,date:dateOffset(5,9),pm25:42,pm10:70,co2:450,aqi:105},
+  {id:3,sensorId:3,date:dateOffset(4,10),pm25:71,pm10:120,co2:520,aqi:165},
+  {id:4,sensorId:1,date:dateOffset(3,11),pm25:29,pm10:48,co2:430,aqi:78},
+  {id:5,sensorId:2,date:dateOffset(2,12),pm25:52,pm10:90,co2:470,aqi:125},
+  {id:6,sensorId:3,date:dateOffset(1,13),pm25:85,pm10:145,co2:580,aqi:210},
+  {id:7,sensorId:1,date:dateOffset(0,9),pm25:20,pm10:36,co2:410,aqi:52},
+  {id:8,sensorId:2,date:dateOffset(0,11),pm25:45,pm10:77,co2:460,aqi:115}
+];
+
+function readStore(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveData() {
+  localStorage.setItem(STORE.sensors, JSON.stringify(sensors));
+  localStorage.setItem(STORE.readings, JSON.stringify(readings));
+  localStorage.setItem(STORE.resolved, JSON.stringify([...resolvedAlerts]));
+}
+
+function loadData() {
+  sensors = readStore(STORE.sensors, initialSensors);
+  readings = readStore(STORE.readings, initialReadings);
+  resolvedAlerts = new Set(readStore(STORE.resolved, []));
+  nextSensorId = Math.max(0, ...sensors.map(s => Number(s.id) || 0)) + 1;
+  nextReadingId = Math.max(0, ...readings.map(r => Number(r.id) || 0)) + 1;
+  saveData();
+}
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+
+function isAdmin() {
+  return currentUser?.role === "admin";
+}
+
+async function hashPassword(password) {
+  if (window.crypto?.subtle) {
+    const bytes = new TextEncoder().encode(password);
+    const hash = await crypto.subtle.digest("SHA-256", bytes);
+    return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2,"0")).join("");
+  }
+  return password;
+}
+
+function showAuthMessage(message, success = false) {
+  const node = $("auth-message");
+  node.textContent = message;
+  node.classList.toggle("success", success);
+}
+
+function updateAuthUI() {
+  document.querySelectorAll(".auth-tab").forEach(button => {
+    button.classList.toggle("active", button.dataset.role === authRole);
+  });
+  $("auth-title").textContent = `${authRole === "admin" ? "Admin" : "User"} ${authMode === "login" ? "Login" : "Registration"}`;
+  $("auth-subtitle").textContent = authRole === "admin"
+    ? "Sign in to manage air quality data and monitoring stations."
+    : "Sign in to explore air quality readings and reports.";
+  $("mode-login").classList.toggle("active", authMode === "login");
+  $("mode-signup").classList.toggle("active", authMode === "signup");
+  $("name-field").hidden = authMode !== "signup";
+  $("confirm-field").hidden = authMode !== "signup";
+  $("auth-name").required = authMode === "signup";
+  $("auth-confirm").required = authMode === "signup";
+  $("auth-submit").textContent = authMode === "login"
+    ? `Sign In as ${authRole === "admin" ? "Admin" : "User"}`
+    : `Create ${authRole === "admin" ? "Admin" : "User"} Account`;
+  $("role-note").textContent = authRole === "admin"
+    ? "Admin accounts can manage sensors, readings and alerts."
+    : "User accounts can view dashboards, readings and reports.";
+  $("auth-password").autocomplete = authMode === "login" ? "current-password" : "new-password";
+  $("auth-confirm").autocomplete = "new-password";
+  showAuthMessage("");
+}
+
+document.querySelectorAll(".auth-tab").forEach(button => {
+  button.addEventListener("click", () => {
+    authRole = button.dataset.role;
+    updateAuthUI();
+  });
+});
+$("mode-login").addEventListener("click", () => { authMode = "login"; updateAuthUI(); });
+$("mode-signup").addEventListener("click", () => { authMode = "signup"; updateAuthUI(); });
+
+$("auth-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const email = $("auth-email").value.trim().toLowerCase();
+  const password = $("auth-password").value;
+  const accounts = readStore(STORE.accounts, []);
+
+  if (password.length < 8) {
+    showAuthMessage("Password must contain at least 8 characters.");
+    return;
+  }
+
+  if (authMode === "signup") {
+    const name = $("auth-name").value.trim();
+    const confirmPassword = $("auth-confirm").value;
+    if (!name) return showAuthMessage("Please enter your full name.");
+    if (password !== confirmPassword) return showAuthMessage("Passwords do not match.");
+    if (accounts.some(a => a.email === email && a.role === authRole)) {
+      return showAuthMessage(`An account with this email already exists for ${authRole}.`);
+    }
+    const passwordHash = await hashPassword(password);
+    accounts.push({name,email,passwordHash,role:authRole,createdAt:new Date().toISOString()});
+    localStorage.setItem(STORE.accounts, JSON.stringify(accounts));
+    showAuthMessage("Account created. You can now sign in.", true);
+    authMode = "login";
+    $("auth-password").value = "";
+    $("auth-confirm").value = "";
+    updateAuthUI();
+    showAuthMessage("Account created. Please sign in.", true);
+    return;
+  }
+
+  const passwordHash = await hashPassword(password);
+  const account = accounts.find(a => a.email === email && a.role === authRole && a.passwordHash === passwordHash);
+  if (!account) {
+    showAuthMessage("Invalid email or password for this account type.");
+    return;
+  }
+
+  currentUser = account;
+  localStorage.setItem(STORE.session, JSON.stringify({
+    email: account.email,
+    role: account.role
+  }));
+  enterApplication();
+});
+
+function enterApplication() {
+  if (!currentUser) return;
+  $("auth-screen").hidden = true;
+  $("app-shell").hidden = false;
+  document.body.classList.toggle("user-mode", !isAdmin());
+  $("current-user-name").textContent = currentUser.name || currentUser.email;
+  $("current-user-role").textContent = isAdmin() ? "ADMIN ACCESS" : "USER ACCESS";
+  $("user-avatar").textContent = (currentUser.name || currentUser.email).trim().charAt(0).toUpperCase();
+  loadData();
+  showPage("dashboard");
+}
+
+function logout() {
+  currentUser = null;
+  localStorage.removeItem(STORE.session);
+  $("app-shell").hidden = true;
+  $("auth-screen").hidden = false;
+  $("auth-form").reset();
+  authMode = "login";
+  authRole = "admin";
+  updateAuthUI();
+}
+
+$("logout-button").addEventListener("click", logout);
+
+function restoreSession() {
+  const session = readStore(STORE.session, null);
+  const accounts = readStore(STORE.accounts, []);
+  if (session) {
+    const account = accounts.find(a => a.email === session.email && a.role === session.role);
+    if (account) {
+      currentUser = account;
+      enterApplication();
+      return;
+    }
+  }
+  $("auth-screen").hidden = false;
+  $("app-shell").hidden = true;
+  updateAuthUI();
+}
+
+function showToast(message) {
+  $("toast").textContent = message;
+  $("toast").classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $("toast").classList.remove("show"), 2600);
+}
+
+function requireAdmin() {
+  if (isAdmin()) return true;
+  showToast("Admin access is required for this action.");
+  return false;
+}
+
+function sensorById(id) {
+  return sensors.find(s => s.id === Number(id));
+}
+function sensorName(id) {
+  return sensorById(id)?.name || "Deleted sensor";
+}
+function fmtDate(value) {
+  return new Date(value).toLocaleString([], {dateStyle:"medium",timeStyle:"short"});
+}
+function aqiCategory(aqi) {
+  if (aqi <= 50) return ["Good","good"];
+  if (aqi <= 100) return ["Moderate","moderate"];
+  if (aqi <= 150) return ["Poor","poor"];
+  if (aqi <= 200) return ["Very Poor","severe"];
+  return ["Severe","severe"];
+}
+function badge(text, kind) {
+  return `<span class="badge badge-${String(kind).toLowerCase()}">${esc(text)}</span>`;
+}
+
+function showPage(page) {
+  if (!$(page)) return;
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".nav").forEach(b => b.classList.remove("active"));
+  $(page).classList.add("active");
+  document.querySelector(`.nav[data-page="${page}"]`)?.classList.add("active");
+  const titles = {
+    dashboard:"Air Quality Dashboard",
+    sensors:"Sensor Management",
+    readings:"Historical Readings",
+    alerts:"Pollution Alerts",
+    reports:"Reports & Analytics",
+    docs:"DBMS Documentation"
+  };
+  $("page-title").textContent = titles[page] || "AirMetric";
+  $("crumb").textContent = page.toUpperCase();
+  window.scrollTo({top:0,behavior:"smooth"});
+  renderAll();
+}
+
+document.querySelectorAll(".nav").forEach(button => {
+  button.addEventListener("click", () => showPage(button.dataset.page));
+});
+document.querySelectorAll("[data-goto]").forEach(button => {
+  button.addEventListener("click", () => showPage(button.dataset.goto));
+});
+
+function getAlerts() {
+  return readings.filter(r => r.aqi > 150).map(r => ({
+    id:r.id,readingId:r.id,sensorId:r.sensorId,aqi:r.aqi,date:r.date,
+    severity:r.aqi > 200 ? "Severe" : "High",
+    status:resolvedAlerts.has(r.id) ? "Resolved" : "Open"
+  })).sort((a,b) => new Date(b.date)-new Date(a.date));
+}
+
+function renderDashboard() {
+  $("total-sensors").textContent = sensors.length;
+  $("active-sensors").textContent = sensors.filter(s => s.status === "Active").length;
+  const latest = [...readings].sort((a,b) => new Date(b.date)-new Date(a.date));
+  const mostRecent = latest[0];
+  $("latest-aqi").textContent = mostRecent ? mostRecent.aqi : "--";
+  $("aqi-status").textContent = mostRecent ? aqiCategory(mostRecent.aqi)[0] : "No readings";
+  $("open-alerts").textContent = getAlerts().filter(a => a.status === "Open").length;
+  $("latest-table").innerHTML = latest.slice(0,6).map(r => `
+    <tr><td>${esc(sensorName(r.sensorId))}</td>
+    <td>${esc(sensorById(r.sensorId)?.location || "Unknown")}</td>
+    <td>${badge(`${r.aqi} · ${aqiCategory(r.aqi)[0]}`,aqiCategory(r.aqi)[1])}</td>
+    <td>${r.pm25}</td><td>${r.pm10}</td><td>${esc(fmtDate(r.date))}</td></tr>
+  `).join("") || `<tr><td colspan="6" class="empty">No readings found.</td></tr>`;
+  renderCharts(latest);
+}
+
+function renderCharts(latest) {
+  if (typeof Chart === "undefined") return;
+  const history = [...latest].sort((a,b) => new Date(a.date)-new Date(b.date));
+  const defaults = {
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:"#b9c9df",boxWidth:12,usePointStyle:true}}},
+    scales:{
+      x:{ticks:{color:"#91a2bb",maxTicksLimit:7},grid:{color:"#23344b"}},
+      y:{beginAtZero:true,ticks:{color:"#91a2bb"},grid:{color:"#23344b"}}
+    }
+  };
+  if (aqiChart) aqiChart.destroy();
+  aqiChart = new Chart($("aqiChart"), {
+    type:"line",
+    data:{labels:history.map(r=>new Date(r.date).toLocaleDateString()),datasets:[{
+      label:"AQI",data:history.map(r=>r.aqi),borderColor:"#39d9a0",
+      backgroundColor:"rgba(57,217,160,.12)",fill:true,tension:.35,pointRadius:4
+    }]},
+    options:defaults
+  });
+  if (pollutionChart) pollutionChart.destroy();
+  const selected = history.slice(-8);
+  pollutionChart = new Chart($("pollutionChart"), {
+    type:"bar",
+    data:{labels:selected.map(r=>sensorName(r.sensorId).slice(0,12)),datasets:[
+      {label:"PM2.5",data:selected.map(r=>r.pm25),backgroundColor:"#58a6ff"},
+      {label:"PM10",data:selected.map(r=>r.pm10),backgroundColor:"#f5ca58"},
+      {label:"CO₂",data:selected.map(r=>r.co2),backgroundColor:"#ff9c52"}
+    ]},
+    options:defaults
+  });
+}
+
+function renderSensorOptions() {
+  const options = sensors.map(s=>`<option value="${s.id}">${esc(s.name)} — ${esc(s.location)}</option>`).join("");
+  const filter = $("reading-sensor-filter");
+  const previous = filter.value;
+  filter.innerHTML = `<option value="">All sensors</option>${options}`;
+  if ([...filter.options].some(o=>o.value===previous)) filter.value=previous;
+  const formSelect = $("reading-sensor");
+  const formPrevious = formSelect.value;
+  formSelect.innerHTML = options;
+  if ([...formSelect.options].some(o=>o.value===formPrevious)) formSelect.value=formPrevious;
+}
+
+function renderSensors() {
+  const query = $("sensor-search").value.trim().toLowerCase();
+  const status = $("sensor-status-filter").value;
+  const filtered = sensors.filter(s =>
+    `${s.name} ${s.location} ${s.id}`.toLowerCase().includes(query) &&
+    (!status || s.status===status)
+  );
+  $("sensors-table").innerHTML = filtered.map(s=>`
+    <tr><td>#${s.id}</td><td>${esc(s.name)}</td><td>${esc(s.location)}</td>
+    <td>${badge(s.status,s.status.toLowerCase())}</td>
+    ${isAdmin()?`<td><div class="table-actions">
+      <button class="mini-btn" data-edit-sensor="${s.id}">Edit</button>
+      <button class="mini-btn delete" data-delete-sensor="${s.id}">Delete</button>
+    </div></td>`:""}
+    </tr>
+  `).join("") || `<tr><td colspan="${isAdmin()?5:4}" class="empty">No sensors match your search.</td></tr>`;
+}
+$("sensor-search").addEventListener("input",renderSensors);
+$("sensor-status-filter").addEventListener("change",renderSensors);
+
+$("add-sensor").addEventListener("click",()=>{
+  if(!requireAdmin())return;
+  $("sensor-form").reset();$("sensor-id").value="";
+  $("sensor-form-title").textContent="Add Sensor";
+  $("sensor-form-panel").hidden=false;
+  $("sensor-form-panel").scrollIntoView({behavior:"smooth"});
+});
+$("cancel-sensor").addEventListener("click",()=>$("sensor-form-panel").hidden=true);
+
+$("sensor-form").addEventListener("submit",event=>{
+  event.preventDefault();if(!requireAdmin())return;
+  const id=Number($("sensor-id").value);
+  const item={
+    name:$("sensor-name").value.trim(),location:$("sensor-location").value.trim(),
+    lat:Number($("sensor-lat").value),lon:Number($("sensor-lon").value),
+    status:$("sensor-status").value
+  };
+  if(!item.name||!item.location||!Number.isFinite(item.lat)||!Number.isFinite(item.lon)||
+     item.lat < -90||item.lat > 90||item.lon < -180||item.lon > 180){
+    showToast("Enter valid sensor details.");return;
+  }
+  if(id){
+    const existing=sensorById(id);if(existing)Object.assign(existing,item);
+    showToast("Sensor updated.");
+  }else{
+    sensors.push({id:nextSensorId++,...item});showToast("Sensor added.");
+  }
+  saveData();$("sensor-form-panel").hidden=true;renderAll();
+});
+
+$("sensors-table").addEventListener("click",event=>{
+  const edit=event.target.closest("[data-edit-sensor]");
+  const del=event.target.closest("[data-delete-sensor]");
+  if(edit){
+    if(!requireAdmin())return;
+    const s=sensorById(edit.dataset.editSensor);if(!s)return;
+    $("sensor-id").value=s.id;$("sensor-name").value=s.name;
+    $("sensor-location").value=s.location;$("sensor-lat").value=s.lat;
+    $("sensor-lon").value=s.lon;$("sensor-status").value=s.status;
+    $("sensor-form-title").textContent="Edit Sensor";
+    $("sensor-form-panel").hidden=false;
+    $("sensor-form-panel").scrollIntoView({behavior:"smooth"});
+  }
+  if(del){
+    if(!requireAdmin())return;
+    const id=Number(del.dataset.deleteSensor);
+    if(!confirm("Delete this sensor and its related readings?"))return;
+    const removed=readings.filter(r=>r.sensorId===id).map(r=>r.id);
+    sensors=sensors.filter(s=>s.id!==id);
+    readings=readings.filter(r=>r.sensorId!==id);
+    removed.forEach(rid=>resolvedAlerts.delete(rid));
+    saveData();renderAll();showToast("Sensor and related readings deleted.");
+  }
+});
+
+function getFilteredReadings(){
+  const sensorId=$("reading-sensor-filter").value;
+  const from=$("date-from").value;const to=$("date-to").value;
+  return [...readings]
+    .filter(r=>!sensorId||r.sensorId===Number(sensorId))
+    .filter(r=>!from||r.date.slice(0,10)>=from)
+    .filter(r=>!to||r.date.slice(0,10)<=to)
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+}
+
+function renderReadings(){
+  const filtered=getFilteredReadings();
+  $("record-count").textContent=filtered.length;
+  $("avg-aqi").textContent=filtered.length?Math.round(filtered.reduce((sum,r)=>sum+r.aqi,0)/filtered.length):"--";
+  $("max-aqi").textContent=filtered.length?Math.max(...filtered.map(r=>r.aqi)):"--";
+  $("readings-table").innerHTML=filtered.map(r=>`
+    <tr><td>#${r.id}</td><td>${esc(sensorName(r.sensorId))}</td><td>${esc(fmtDate(r.date))}</td>
+    <td>${r.pm25}</td><td>${r.pm10}</td><td>${r.co2}</td>
+    <td>${badge(`${r.aqi} · ${aqiCategory(r.aqi)[0]}`,aqiCategory(r.aqi)[1])}</td>
+    ${isAdmin()?`<td><div class="table-actions">
+      <button class="mini-btn" data-edit-reading="${r.id}">Edit</button>
+      <button class="mini-btn delete" data-delete-reading="${r.id}">Delete</button>
+    </div></td>`:""}
+    </tr>
+  `).join("")||`<tr><td colspan="${isAdmin()?8:7}" class="empty">No readings match these filters.</td></tr>`;
+}
+["reading-sensor-filter","date-from","date-to"].forEach(id=>$(id).addEventListener("change",renderReadings));
+$("clear-filters").addEventListener("click",()=>{
+  $("reading-sensor-filter").value="";$("date-from").value="";$("date-to").value="";
+  renderReadings();
+});
+
+$("add-reading").addEventListener("click",()=>{
+  if(!requireAdmin())return;
+  if(!sensors.length){showToast("Add a sensor before adding readings.");return;}
+  $("reading-form").reset();$("reading-id").value="";
+  $("reading-date").value=dateOffset(0,new Date().getHours());
+  $("reading-form-title").textContent="Add Reading";
+  $("reading-form-panel").hidden=false;
+  $("reading-form-panel").scrollIntoView({behavior:"smooth"});
+});
+$("cancel-reading").addEventListener("click",()=>$("reading-form-panel").hidden=true);
+
+$("reading-form").addEventListener("submit",event=>{
+  event.preventDefault();if(!requireAdmin())return;
+  const id=Number($("reading-id").value);const date=$("reading-date").value;
+  const item={
+    sensorId:Number($("reading-sensor").value),date,
+    pm25:Number($("reading-pm25").value),pm10:Number($("reading-pm10").value),
+    co2:Number($("reading-co2").value),aqi:Number($("reading-aqi").value)
+  };
+  if(!sensorById(item.sensorId)||!date||!Number.isFinite(new Date(date).getTime())||
+    ![item.pm25,item.pm10,item.co2,item.aqi].every(Number.isFinite)||
+    item.pm25<0||item.pm10<0||item.co2<0||item.aqi<0||item.aqi>500){
+    showToast("Check the sensor, date and measurement values.");return;
+  }
+  if(id){
+    const existing=readings.find(r=>r.id===id);
+    if(existing)Object.assign(existing,item);
+    resolvedAlerts.delete(id);showToast("Reading updated.");
+  }else{
+    readings.push({id:nextReadingId++,...item});showToast("Reading added.");
+  }
+  saveData();$("reading-form-panel").hidden=true;renderAll();
+});
+
+$("readings-table").addEventListener("click",event=>{
+  const edit=event.target.closest("[data-edit-reading]");
+  const del=event.target.closest("[data-delete-reading]");
+  if(edit){
+    if(!requireAdmin())return;
+    const r=readings.find(item=>item.id===Number(edit.dataset.editReading));if(!r)return;
+    $("reading-id").value=r.id;$("reading-sensor").value=String(r.sensorId);
+    $("reading-date").value=r.date;$("reading-pm25").value=r.pm25;
+    $("reading-pm10").value=r.pm10;$("reading-co2").value=r.co2;
+    $("reading-aqi").value=r.aqi;$("reading-form-title").textContent="Edit Reading";
+    $("reading-form-panel").hidden=false;
+    $("reading-form-panel").scrollIntoView({behavior:"smooth"});
+  }
+  if(del){
+    if(!requireAdmin())return;
+    const id=Number(del.dataset.deleteReading);
+    if(!confirm("Delete this reading?"))return;
+    readings=readings.filter(r=>r.id!==id);resolvedAlerts.delete(id);
+    saveData();renderAll();showToast("Reading deleted.");
+  }
+});
+
+function renderAlerts(){
+  const alerts=getAlerts();
+  $("total-alerts").textContent=alerts.length;
+  $("unresolved-alerts").textContent=alerts.filter(a=>a.status==="Open").length;
+  $("alerts-table").innerHTML=alerts.map(a=>`
+    <tr><td>#${a.id}</td><td>${esc(sensorName(a.sensorId))}</td>
+    <td>${esc(sensorById(a.sensorId)?.location||"Unknown")}</td><td>${a.aqi}</td>
+    <td>${badge(a.severity,"severe")}</td><td>${esc(fmtDate(a.date))}</td>
+    <td>${badge(a.status,a.status.toLowerCase())}</td>
+    ${isAdmin()?`<td>${a.status==="Open"
+      ?`<button class="mini-btn" data-resolve="${a.id}">Resolve</button>`
+      :`<button class="mini-btn" data-reopen="${a.id}">Reopen</button>`}</td>`:""}
+    </tr>
+  `).join("")||`<tr><td colspan="${isAdmin()?8:7}" class="empty">No alerts found. Alerts are generated when AQI exceeds 150.</td></tr>`;
+}
+$("alerts-table").addEventListener("click",event=>{
+  if(!requireAdmin())return;
+  const resolve=event.target.closest("[data-resolve]");
+  const reopen=event.target.closest("[data-reopen]");
+  if(resolve){resolvedAlerts.add(Number(resolve.dataset.resolve));showToast("Alert resolved.");}
+  if(reopen){resolvedAlerts.delete(Number(reopen.dataset.reopen));showToast("Alert reopened.");}
+  saveData();renderAll();
+});
+
+function renderReports(){
+  $("total-readings").textContent=readings.length;
+  $("overall-average").textContent=readings.length?(readings.reduce((sum,r)=>sum+r.aqi,0)/readings.length).toFixed(1):"--";
+  const locations=sensors.map(s=>{
+    const items=readings.filter(r=>r.sensorId===s.id);
+    return {location:s.location,sensorCount:1,count:items.length,
+      highest:items.length?Math.max(...items.map(r=>r.aqi)):null,
+      average:items.length?(items.reduce((sum,r)=>sum+r.aqi,0)/items.length).toFixed(1):null};
+  });
+  const populated=locations.filter(x=>x.highest!==null).sort((a,b)=>b.highest-a.highest);
+  $("worst-location").textContent=populated[0]?.location||"--";
+  $("location-report").innerHTML=locations.map(l=>`
+    <tr><td>${esc(l.location)}</td><td>${l.sensorCount}</td><td>${l.count}</td>
+    <td>${l.highest??"--"}</td><td>${l.average??"--"}</td></tr>
+  `).join("")||`<tr><td colspan="5" class="empty">No locations available.</td></tr>`;
+  const days={};
+  readings.forEach(r=>{const day=r.date.slice(0,10);(days[day]??=[]).push(r.aqi);});
+  $("daily-report").innerHTML=Object.keys(days).sort().reverse().map(day=>{
+    const values=days[day];const avg=values.reduce((sum,v)=>sum+v,0)/values.length;
+    return `<tr><td>${esc(day)}</td><td>${values.length}</td><td>${avg.toFixed(1)}</td></tr>`;
+  }).join("")||`<tr><td colspan="3" class="empty">No readings available.</td></tr>`;
+}
+
+function exportCSV(){
+  const rows=[
+    ["Reading ID","Sensor","Location","Recorded At","PM2.5","PM10","CO2 ppm","AQI"],
+    ...getFilteredReadings().map(r=>[r.id,sensorName(r.sensorId),sensorById(r.sensorId)?.location||"",r.date,r.pm25,r.pm10,r.co2,r.aqi])
+  ];
+  const csv=rows.map(row=>row.map(value=>{
+    let s=String(value??"");
+    if(/^[=+\-@\t\r]/.test(s))s="'"+s;
+    return `"${s.replace(/"/g,'""')}"`;
+  }).join(",")).join("\r\n");
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);const link=document.createElement("a");
+  link.href=url;link.download="airmetric-readings.csv";link.click();URL.revokeObjectURL(url);
+  showToast("CSV file exported.");
+}
+$("export-csv").addEventListener("click",exportCSV);
+
+function renderAll(){
+  renderSensorOptions();renderDashboard();renderSensors();renderReadings();renderAlerts();renderReports();
+}
+
+updateAuthUI();
+restoreSession();
+'''
+
+files = {
+    "index.html": index_html,
+    "style.css": style_css,
+    "script.js": script_js
+}
+for name, content in files.items():
+    with open(os.path.join(outdir, name), "w", encoding="utf-8") as f:
+        f.write(content)
+
+zip_path = "/mnt/data/AirMetric_Complete_Replacement.zip"
+with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+    for name in files:
+        z.write(os.path.join(outdir, name), arcname=name)
+
+print("Created complete replacement files:")
+for name, content in files.items():
+    print(f"{name}: {len(content)} characters")
+print(f"ZIP: {zip_path}")
