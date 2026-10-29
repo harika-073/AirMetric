@@ -486,9 +486,9 @@ body.user-mode .admin-only{display:none!important}
 @media(max-width:1100px){.sidebar{width:215px}.main{margin-left:215px;padding:0 22px 22px}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.chart-grid{grid-template-columns:1fr}.er-box{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.sidebar{position:relative;width:100%;inset:auto;padding:16px;display:block;border-right:0;border-bottom:1px solid var(--border)}.brand{margin:0 0 18px}.menu-label{margin-bottom:8px}.sidebar .nav{display:inline-flex;width:auto;margin:3px;padding:10px}.nav span{font-size:11px}.sidebar-bottom{margin-top:14px}.main{margin-left:0;padding:0 14px 20px}.topbar{align-items:flex-start;padding:20px 0;flex-direction:column}.top-actions{width:100%;justify-content:flex-end;flex-wrap:wrap}.topbar h1{font-size:20px}.welcome{padding:21px;gap:12px}.welcome h2{font-size:21px}.welcome-icon{font-size:32px;padding:9px}.stats-grid,.stats-grid.compact{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.stat-card{padding:14px}.stat-value{font-size:25px}.panel{padding:14px}.page-intro{align-items:flex-start;flex-direction:column}.page-intro h2{font-size:21px}.toolbar{flex-direction:column}.toolbar select{width:100%}.form-grid{grid-template-columns:1fr}.er-box{grid-template-columns:1fr 1fr}.auth-card{padding:21px}.auth-heading h1{font-size:25px}}
 @media(max-width:420px){.stats-grid,.stats-grid.compact{grid-template-columns:1fr 1fr}.stat-top{font-size:11px}.stat-foot{line-height:1.5}.user-meta{margin-right:auto}.er-box{grid-template-columns:1fr}.auth-heading h1{font-size:23px}}
-'''
 
-script_js = r'''const $ = id => document.getElementById(id);
+
+const $ = id => document.getElementById(id);
 
 const STORE = {
   accounts: "airmetric_accounts_v1",
