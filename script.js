@@ -1,361 +1,586 @@
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#f4faf6">
-  <title>AirMetric | Environmental Intelligence</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
+const $ = id => document.getElementById(id);
 
-  <!-- LOGIN: dashboard remains hidden until sign-in succeeds -->
-  <section id="loginScreen" class="login-screen">
-    <div class="login-art">
-      <div class="art-orb orb-one"></div>
-      <div class="art-orb orb-two"></div>
+const dateOffset = (days, hour = 10) => {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  d.setHours(hour, 30, 0, 0);
+  return d.toISOString().slice(0, 16);
+};
 
-      <a href="#" class="brand brand-large">
-        <span class="brand-mark">A</span><span>AirMetric</span>
-      </a>
+let nextSensorId = 5;
+let nextReadingId = 9;
 
-      <div class="login-message">
-        <span class="eyebrow"><span class="live-dot"></span> ENVIRONMENTAL INTELLIGENCE</span>
-        <h1>Measure today.<br><em>Protect tomorrow.</em></h1>
-        <p>Monitor air quality, understand pollutant trends, and turn environmental data into better decisions.</p>
-        <div class="login-highlights">
-          <span>✳ Environmental monitoring</span>
-          <span>⌁ Insightful reporting</span>
-          <span>◉ Pollution alerts</span>
-        </div>
-      </div>
+let sensors = [
+  { id: 1, name: "Campus Central", location: "College Campus", lat: 16.30, lon: 80.45, status: "Active" },
+  { id: 2, name: "City Monitor", location: "City Center", lat: 16.31, lon: 80.44, status: "Active" },
+  { id: 3, name: "Industrial Watch", location: "Industrial Area", lat: 16.34, lon: 80.48, status: "Maintenance" },
+  { id: 4, name: "Green Park Sensor", location: "Green Park", lat: 16.29, lon: 80.43, status: "Inactive" }
+];
 
-      <div class="login-art-footer">
-        <span>ENVIRONMENTAL DATA PLATFORM</span>
-        <span>BUILT FOR BETTER AIR</span>
-      </div>
-    </div>
+let readings = [
+  { id: 1, sensorId: 1, date: dateOffset(6, 8), pm25: 24, pm10: 41, co2: 420, aqi: 65 },
+  { id: 2, sensorId: 2, date: dateOffset(5, 9), pm25: 42, pm10: 70, co2: 450, aqi: 105 },
+  { id: 3, sensorId: 3, date: dateOffset(4, 10), pm25: 71, pm10: 120, co2: 520, aqi: 165 },
+  { id: 4, sensorId: 1, date: dateOffset(3, 11), pm25: 29, pm10: 48, co2: 430, aqi: 78 },
+  { id: 5, sensorId: 2, date: dateOffset(2, 12), pm25: 52, pm10: 90, co2: 470, aqi: 125 },
+  { id: 6, sensorId: 3, date: dateOffset(1, 13), pm25: 85, pm10: 145, co2: 580, aqi: 210 },
+  { id: 7, sensorId: 1, date: dateOffset(0, 9), pm25: 20, pm10: 36, co2: 410, aqi: 52 },
+  { id: 8, sensorId: 2, date: dateOffset(0, 11), pm25: 45, pm10: 77, co2: 460, aqi: 115 }
+];
 
-    <div class="login-side">
-      <div class="login-card">
-        <div class="mobile-brand brand">
-          <span class="brand-mark">A</span><span>AirMetric</span>
-        </div>
-        <span class="eyebrow">WELCOME BACK</span>
-        <h2>Sign in to your workspace</h2>
-        <p class="muted">Enter your account credentials to continue.</p>
+let resolvedAlerts = new Set();
+let aqiChart = null;
+let pollutionChart = null;
+let toastTimer;
 
-        <form id="loginForm">
-          <label for="loginRole">Account type</label>
-          <select id="loginRole" required>
-            <option value="user">Standard user</option>
-            <option value="admin">Administrator</option>
-          </select>
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;",
+    '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
 
-          <label for="email">Email address</label>
-          <input id="email" type="email" placeholder="you@example.com" autocomplete="username" required>
+function sensorById(id) {
+  return sensors.find(s => s.id === Number(id));
+}
 
-          <label for="password">Password</label>
-          <div class="password-wrap">
-            <input id="password" type="password" placeholder="Enter your password" autocomplete="current-password" required>
-            <button type="button" id="togglePassword" class="password-toggle">Show</button>
-          </div>
+function sensorName(id) {
+  return sensorById(id)?.name || "Deleted sensor";
+}
 
-          <p id="loginError" class="form-error" role="alert"></p>
-          <button class="btn btn-primary login-submit" type="submit">
-            Sign in <span>↗</span>
-          </button>
-        </form>
+function fmtDate(value) {
+  return new Date(value).toLocaleString([], {
+    dateStyle: "medium",
+    timeStyle: "short"
+  });
+}
 
-        <div class="login-note">
-          <span>⌑</span>
-          <p><strong>Protected workspace</strong><br>Your account will be verified by the authentication backend once connected.</p>
-        </div>
-        <p class="login-foot">AirMetric · Environmental Monitoring DBMS</p>
-      </div>
-    </div>
-  </section>
+function aqiCategory(aqi) {
+  if (aqi <= 50) return ["Good", "good"];
+  if (aqi <= 100) return ["Moderate", "moderate"];
+  if (aqi <= 150) return ["Poor", "poor"];
+  if (aqi <= 200) return ["Very Poor", "severe"];
+  return ["Severe", "severe"];
+}
 
-  <!-- APPLICATION -->
-  <div id="app" class="app-shell hidden">
-    <aside id="sidebar" class="sidebar">
-      <a href="#" class="brand sidebar-brand" data-page="overview">
-        <span class="brand-mark">A</span><span>AirMetric</span>
-      </a>
+function badge(text, kind) {
+  return `<span class="badge badge-${kind.toLowerCase()}">${esc(text)}</span>`;
+}
 
-      <div class="workspace-label">WORKSPACE</div>
-      <nav class="main-nav">
-        <button class="nav-item active" data-page="overview"><span>◫</span> Overview</button>
-        <button class="nav-item" data-page="readings"><span>⌁</span> Air readings</button>
-        <button class="nav-item" data-page="stations"><span>⌖</span> Monitoring stations</button>
-        <button class="nav-item" data-page="reports"><span>▤</span> Reports & analytics</button>
-        <button class="nav-item" data-page="alerts">
-          <span>♧</span> Pollution alerts <span id="alertBadge" class="nav-count">0</span>
-        </button>
+function showToast(message) {
+  $("toast").textContent = message;
+  $("toast").classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $("toast").classList.remove("show"), 2600);
+}
 
-        <div class="workspace-label admin-label admin-only hidden">ADMINISTRATION</div>
-        <button class="nav-item admin-only hidden" data-page="users"><span>♙</span> User management</button>
-      </nav>
+function showPage(page) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".nav").forEach(b => b.classList.remove("active"));
 
-      <div class="sidebar-bottom">
-        <div class="sidebar-status">
-          <span class="live-dot"></span>
-          <div><strong>Workspace active</strong><small>Environmental monitoring</small></div>
-        </div>
-        <button id="themeToggle" class="theme-toggle"><span>☼</span> Switch appearance</button>
-        <div class="profile-row">
-          <div id="profileAvatar" class="avatar">U</div>
-          <div class="profile-info">
-            <strong id="profileName">AirMetric User</strong>
-            <small id="profileRole">Standard user</small>
-          </div>
-          <button id="logoutBtn" class="icon-button" title="Sign out" aria-label="Sign out">⇥</button>
-        </div>
-      </div>
-    </aside>
+  $(page)?.classList.add("active");
+  document.querySelector(`.nav[data-page="${page}"]`)?.classList.add("active");
 
-    <main class="main-content">
-      <header class="topbar">
-        <div class="topbar-left">
-          <button id="menuToggle" class="icon-button menu-toggle" aria-label="Open menu">☰</button>
-          <div class="breadcrumb">Workspace <span>/</span> <strong id="breadcrumbPage">Overview</strong></div>
-        </div>
-        <div class="topbar-right">
-          <span id="currentDate" class="date-label"></span>
-          <div class="topbar-avatar">A</div>
-        </div>
-      </header>
+  const titles = {
+    dashboard: "Air Quality Dashboard",
+    sensors: "Sensor Management",
+    readings: "Historical Readings",
+    alerts: "Pollution Alerts",
+    reports: "Reports & Analytics",
+    docs: "DBMS Documentation"
+  };
 
-      <!-- OVERVIEW -->
-      <section id="page-overview" class="page-section active">
-        <div class="page-heading">
-          <div>
-            <span class="eyebrow">ENVIRONMENTAL OVERVIEW</span>
-            <h1>Air quality at a glance</h1>
-            <p id="welcomeText" class="muted">Your environmental monitoring workspace.</p>
-          </div>
-          <button class="btn btn-primary admin-only hidden" data-action="add-reading">＋ Add reading</button>
-        </div>
+  $("page-title").textContent = titles[page] || "AirWatch";
+  $("crumb").textContent = page.toUpperCase();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 
-        <div class="hero-grid">
-          <article class="aqi-card panel">
-            <div class="card-topline">
-              <div><span class="eyebrow">AVERAGE RECORDED AQI</span><h2>Air Quality Index</h2></div>
-              <div class="metric-icon mint">⌁</div>
-            </div>
-            <div class="aqi-main">
-              <div>
-                <div id="aqiValue" class="aqi-number">—</div>
-                <span id="aqiStatus" class="status-pill status-neutral">No data</span>
-              </div>
-              <div class="aqi-graphic">
-                <div class="aqi-ring"><span>◌</span></div>
-                <div class="ring-caption">AIR<br>QUALITY</div>
-              </div>
-            </div>
-            <div class="meter"><span id="aqiMeter"></span></div>
-            <div id="aqiDescription" class="card-footnote">No readings recorded yet</div>
-          </article>
+  renderAll();
+}
 
-          <article class="metric-card panel">
-            <div class="metric-card-head"><span>Latest PM2.5</span><span class="metric-icon blue">◌</span></div>
-            <div class="metric-value"><strong id="pm25Value">—</strong><small>µg/m³</small></div>
-            <p>Fine particulate matter</p><div class="metric-line"><span></span></div>
-          </article>
+document.querySelectorAll(".nav").forEach(button => {
+  button.addEventListener("click", () => showPage(button.dataset.page));
+});
 
-          <article class="metric-card panel">
-            <div class="metric-card-head"><span>Latest PM10</span><span class="metric-icon violet">◍</span></div>
-            <div class="metric-value"><strong id="pm10Value">—</strong><small>µg/m³</small></div>
-            <p>Coarse particulate matter</p><div class="metric-line blue-line"><span></span></div>
-          </article>
+document.querySelectorAll("[data-goto]").forEach(button => {
+  button.addEventListener("click", () => showPage(button.dataset.goto));
+});
 
-          <article class="metric-card panel">
-            <div class="metric-card-head"><span>Latest CO</span><span class="metric-icon amber">◎</span></div>
-            <div class="metric-value"><strong id="coValue">—</strong><small>mg/m³</small></div>
-            <p>Carbon monoxide</p><div class="metric-line violet-line"><span></span></div>
-          </article>
-        </div>
+function getAlerts() {
+  return readings
+    .filter(r => r.aqi > 150)
+    .map(r => ({
+      id: r.id,
+      readingId: r.id,
+      sensorId: r.sensorId,
+      aqi: r.aqi,
+      date: r.date,
+      severity: r.aqi > 200 ? "Severe" : "High",
+      status: resolvedAlerts.has(r.id) ? "Resolved" : "Open"
+    }))
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+}
 
-        <div class="section-title-row">
-          <div><h2>Pollutant trends</h2><p>Measurements saved in this workspace</p></div>
-          <select id="chartRange" class="compact-select">
-            <option value="7">Last 7 days</option>
-            <option value="14">Last 14 days</option>
-            <option value="30">Last 30 days</option>
-          </select>
-        </div>
+function renderDashboard() {
+  $("total-sensors").textContent = sensors.length;
+  $("active-sensors").textContent = sensors.filter(s => s.status === "Active").length;
 
-        <div class="dashboard-grid">
-          <article class="panel chart-panel">
-            <div class="panel-heading">
-              <div><h3>Concentration over time</h3><p>PM2.5, PM10 and NO₂</p></div>
-              <span class="subtle-tag">Recorded values</span>
-            </div>
-            <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
-            <div class="chart-legend">
-              <span><i class="legend-dot mint-dot"></i>PM2.5</span>
-              <span><i class="legend-dot blue-dot"></i>PM10</span>
-              <span><i class="legend-dot violet-dot"></i>NO₂</span>
-            </div>
-          </article>
+  const latest = [...readings].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const mostRecent = latest[0];
 
-          <article class="panel distribution-panel">
-            <div class="panel-heading"><div><h3>Reading distribution</h3><p>Records grouped by AQI status</p></div></div>
-            <div id="distributionList" class="distribution-list"></div>
-            <div class="distribution-note">Status is based on the AQI entered with each reading.</div>
-          </article>
-        </div>
+  $("latest-aqi").textContent = mostRecent ? mostRecent.aqi : "--";
+  $("aqi-status").textContent = mostRecent
+    ? aqiCategory(mostRecent.aqi)[0]
+    : "No readings";
 
-        <div class="dashboard-grid lower-grid">
-          <article class="panel table-panel">
-            <div class="panel-heading">
-              <div><h3>Recent readings</h3><p>Latest saved measurements</p></div>
-              <button class="text-button" data-page="readings">View all ↗</button>
-            </div>
-            <div class="table-scroll">
-              <table><thead><tr><th>Station / pollutant</th><th>Value</th><th>Status</th><th>Recorded</th></tr></thead><tbody id="recentReadingsBody"></tbody></table>
-            </div>
-          </article>
+  $("open-alerts").textContent = getAlerts().filter(a => a.status === "Open").length;
 
-          <article class="panel stations-panel">
-            <div class="panel-heading">
-              <div><h3>Monitoring stations</h3><p>Monitored locations</p></div>
-              <span class="station-count" id="stationCount">0</span>
-            </div>
-            <div id="stationPreview"></div>
-            <button class="btn btn-secondary full-width" data-page="stations">Explore stations <span>→</span></button>
-          </article>
-        </div>
-      </section>
+  $("latest-table").innerHTML = latest.slice(0, 6).map(r => `
+    <tr>
+      <td>${esc(sensorName(r.sensorId))}</td>
+      <td>${esc(sensorById(r.sensorId)?.location || "Unknown")}</td>
+      <td>${badge(`${r.aqi} · ${aqiCategory(r.aqi)[0]}`, aqiCategory(r.aqi)[1])}</td>
+      <td>${r.pm25}</td>
+      <td>${r.pm10}</td>
+      <td>${esc(fmtDate(r.date))}</td>
+    </tr>
+  `).join("") || `<tr><td colspan="6" class="empty">No readings found.</td></tr>`;
 
-      <!-- READINGS -->
-      <section id="page-readings" class="page-section">
-        <div class="page-heading">
-          <div><span class="eyebrow">DATA MANAGEMENT</span><h1>Air readings</h1><p class="muted">Record, review, and maintain pollutant measurements.</p></div>
-          <button class="btn btn-primary admin-only hidden" data-action="add-reading">＋ Add reading</button>
-        </div>
-        <div class="toolbar panel">
-          <div class="search-wrap"><span>⌕</span><input id="readingSearch" type="search" placeholder="Search station, pollutant, or record..."></div>
-          <select id="pollutantFilter">
-            <option value="">All pollutants</option><option>PM2.5</option><option>PM10</option><option>CO</option><option>NO2</option><option>SO2</option><option>O3</option>
-          </select>
-          <select id="statusFilter">
-            <option value="">All statuses</option><option>Good</option><option>Moderate</option><option>Poor</option><option>Unhealthy</option>
-          </select>
-          <button class="btn btn-secondary" id="exportReadings">↓ Export CSV</button>
-        </div>
-        <div class="panel table-panel">
-          <div class="panel-heading"><div><h3>Measurement records</h3><p id="readingCount">0 records</p></div></div>
-          <div class="table-scroll">
-            <table><thead><tr><th>Record / station</th><th>Pollutant</th><th>Value</th><th>AQI</th><th>Status</th><th>Recorded at</th><th>Actions</th></tr></thead><tbody id="readingsBody"></tbody></table>
-          </div>
-          <div id="readingsEmpty" class="empty-state hidden">No readings match your filters.</div>
-        </div>
-      </section>
+  renderCharts(latest);
+}
 
-      <!-- STATIONS -->
-      <section id="page-stations" class="page-section">
-        <div class="page-heading">
-          <div><span class="eyebrow">LOCATION NETWORK</span><h1>Monitoring stations</h1><p class="muted">Manage locations where environmental readings are recorded.</p></div>
-          <button class="btn btn-primary admin-only hidden" data-action="add-station">＋ Add station</button>
-        </div>
-        <div class="station-summary-grid">
-          <div class="panel summary-mini"><span class="metric-icon mint">⌖</span><div><strong id="stationTotal">0</strong><small>Total stations</small></div></div>
-          <div class="panel summary-mini"><span class="metric-icon blue">⌁</span><div><strong id="activeStationTotal">0</strong><small>Active stations</small></div></div>
-          <div class="panel summary-mini"><span class="metric-icon violet">▤</span><div><strong id="stationReadingsTotal">0</strong><small>Linked readings</small></div></div>
-        </div>
-        <div id="stationsGrid" class="stations-grid"></div>
-      </section>
+function renderCharts(latest) {
+  const history = [...latest].sort((a, b) => new Date(a.date) - new Date(b.date));
 
-      <!-- REPORTS -->
-      <section id="page-reports" class="page-section">
-        <div class="page-heading">
-          <div><span class="eyebrow">INSIGHTS & EXPORTS</span><h1>Reports & analytics</h1><p class="muted">Create, download, and manage your report history.</p></div>
-          <button class="btn btn-primary" id="createReportBtn">＋ Create report</button>
-        </div>
-        <div class="report-kpis">
-          <div class="panel report-kpi"><span class="metric-icon mint">▤</span><div><strong id="reportTotal">0</strong><small>Saved reports</small></div></div>
-          <div class="panel report-kpi"><span class="metric-icon blue">⌁</span><div><strong id="reportReadingsTotal">0</strong><small>Readings available</small></div></div>
-          <div class="panel report-kpi"><span class="metric-icon amber">♧</span><div><strong id="reportAlertTotal">0</strong><small>Active alerts</small></div></div>
-        </div>
-        <div class="panel table-panel">
-          <div class="panel-heading">
-            <div><h3>Report library</h3><p>Generated report records for this workspace</p></div>
-            <button id="exportAllData" class="btn btn-secondary">↓ Export readings CSV</button>
-          </div>
-          <div class="table-scroll">
-            <table><thead><tr><th>Report</th><th>Type</th><th>Period</th><th>Created</th><th>Records</th><th>Actions</th></tr></thead><tbody id="reportsBody"></tbody></table>
-          </div>
-          <div id="reportsEmpty" class="empty-state hidden">No reports created yet. Select “Create report” to add one.</div>
-        </div>
-        <div class="panel report-tip">
-          <div class="tip-icon">✦</div>
-          <div><h3>About your reports</h3><p>Each report stores a title, report type, date range, creation time, and snapshot count. Export readings to analyse them in spreadsheet software.</p></div>
-        </div>
-      </section>
+  const chartDefaults = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: { color: "#b9c9df", boxWidth: 12, usePointStyle: true }
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: "#91a2bb", maxTicksLimit: 7 },
+        grid: { color: "#23344b" }
+      },
+      y: {
+        beginAtZero: true,
+        ticks: { color: "#91a2bb" },
+        grid: { color: "#23344b" }
+      }
+    }
+  };
 
-      <!-- ALERTS -->
-      <section id="page-alerts" class="page-section">
-        <div class="page-heading">
-          <div><span class="eyebrow">ENVIRONMENTAL WATCH</span><h1>Pollution alerts</h1><p class="muted">Create alerts, review pollution events, and resolve items.</p></div>
-          <button class="btn btn-primary" id="createAlertBtn">＋ New alert</button>
-        </div>
-        <div class="alert-summary-grid">
-          <div class="panel summary-mini"><span class="metric-icon amber">♧</span><div><strong id="activeAlertsTotal">0</strong><small>Active alerts</small></div></div>
-          <div class="panel summary-mini"><span class="metric-icon mint">✓</span><div><strong id="resolvedAlertsTotal">0</strong><small>Resolved alerts</small></div></div>
-          <div class="panel summary-mini"><span class="metric-icon violet">⌁</span><div><strong id="highAlertsTotal">0</strong><small>High priority active</small></div></div>
-        </div>
-        <div class="toolbar panel">
-          <div class="search-wrap"><span>⌕</span><input id="alertSearch" type="search" placeholder="Search alert or station..."></div>
-          <select id="alertStatusFilter"><option value="">All statuses</option><option value="Active">Active</option><option value="Resolved">Resolved</option></select>
-          <select id="alertPriorityFilter"><option value="">All priorities</option><option>High</option><option>Medium</option><option>Low</option></select>
-        </div>
-        <div id="alertsList" class="alerts-list"></div>
-      </section>
+  if (aqiChart) aqiChart.destroy();
+  aqiChart = new Chart($("aqiChart"), {
+    type: "line",
+    data: {
+      labels: history.map(r => new Date(r.date).toLocaleDateString()),
+      datasets: [{
+        label: "AQI",
+        data: history.map(r => r.aqi),
+        borderColor: "#39d9a0",
+        backgroundColor: "rgba(57,217,160,.12)",
+        fill: true,
+        tension: 0.35,
+        pointRadius: 4
+      }]
+    },
+    options: chartDefaults
+  });
 
-      <!-- USERS -->
-      <section id="page-users" class="page-section">
-        <div class="page-heading">
-          <div><span class="eyebrow">ACCESS CONTROL</span><h1>User management</h1><p class="muted">Manage preview accounts in this browser. Secure account controls come with the backend.</p></div>
-          <button id="addUserBtn" class="btn btn-primary">＋ Add user</button>
-        </div>
-        <div class="panel table-panel">
-          <div class="panel-heading"><div><h3>Workspace accounts</h3><p>Accounts stored in this browser preview</p></div></div>
-          <div class="table-scroll"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Actions</th></tr></thead><tbody id="usersBody"></tbody></table></div>
-        </div>
-      </section>
+  const selected = history.slice(-8);
+  if (pollutionChart) pollutionChart.destroy();
 
-      <footer class="app-footer">
-        <span>© <span id="year"></span> AirMetric</span>
-        <span>Environmental Monitoring · Frontend preview</span>
-      </footer>
-    </main>
-  </div>
+  pollutionChart = new Chart($("pollutionChart"), {
+    type: "bar",
+    data: {
+      labels: selected.map(r => sensorName(r.sensorId).slice(0, 12)),
+      datasets: [
+        { label: "PM2.5", data: selected.map(r => r.pm25), backgroundColor: "#58a6ff" },
+        { label: "PM10", data: selected.map(r => r.pm10), backgroundColor: "#f5ca58" },
+        { label: "CO₂", data: selected.map(r => r.co2), backgroundColor: "#ff9c52" }
+      ]
+    },
+    options: chartDefaults
+  });
+}
 
-  <!-- REUSABLE MODAL -->
-  <div id="modalBackdrop" class="modal-backdrop hidden">
-    <div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <div class="modal-header">
-        <div><span class="eyebrow">AIRMETRIC WORKSPACE</span><h2 id="modalTitle">Create record</h2></div>
-        <button id="closeModal" class="icon-button" aria-label="Close dialog">×</button>
-      </div>
-      <form id="modalForm">
-        <div id="modalFields" class="modal-fields"></div>
-        <p id="modalError" class="form-error"></p>
-        <div class="modal-actions">
-          <button type="button" id="cancelModal" class="btn btn-secondary">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="saveModal">Save record <span>↗</span></button>
-        </div>
-      </form>
-    </div>
-  </div>
+function renderSensorOptions() {
+  const options = sensors.map(s =>
+    `<option value="${s.id}">${esc(s.name)} — ${esc(s.location)}</option>`
+  ).join("");
 
-  <div id="toastRegion" class="toast-region" aria-live="polite"></div>
-  <script src="script.js"></script>
-</body>
-</html>
+  const filter = $("reading-sensor-filter");
+  const previous = filter.value;
+  filter.innerHTML = `<option value="">All sensors</option>${options}`;
+  if ([...filter.options].some(o => o.value === previous)) filter.value = previous;
+
+  const formSelect = $("reading-sensor");
+  const formPrevious = formSelect.value;
+  formSelect.innerHTML = options;
+  if ([...formSelect.options].some(o => o.value === formPrevious)) {
+    formSelect.value = formPrevious;
+  }
+}
+
+function renderSensors() {
+  const query = $("sensor-search").value.trim().toLowerCase();
+  const status = $("sensor-status-filter").value;
+
+  const filtered = sensors.filter(s =>
+    `${s.name} ${s.location} ${s.id}`.toLowerCase().includes(query) &&
+    (!status || s.status === status)
+  );
+
+  $("sensors-table").innerHTML = filtered.map(s => `
+    <tr>
+      <td>#${s.id}</td>
+      <td>${esc(s.name)}</td>
+      <td>${esc(s.location)}</td>
+      <td>${badge(s.status, s.status.toLowerCase())}</td>
+      <td><div class="table-actions">
+        <button class="mini-btn" data-edit-sensor="${s.id}">Edit</button>
+        <button class="mini-btn delete" data-delete-sensor="${s.id}">Delete</button>
+      </div></td>
+    </tr>
+  `).join("") || `<tr><td colspan="5" class="empty">No sensors match your search.</td></tr>`;
+}
+
+$("sensor-search").addEventListener("input", renderSensors);
+$("sensor-status-filter").addEventListener("change", renderSensors);
+
+$("add-sensor").addEventListener("click", () => {
+  $("sensor-form").reset();
+  $("sensor-id").value = "";
+  $("sensor-form-title").textContent = "Add Sensor";
+  $("sensor-form-panel").hidden = false;
+  $("sensor-form-panel").scrollIntoView({ behavior: "smooth" });
+});
+
+$("cancel-sensor").addEventListener("click", () => {
+  $("sensor-form-panel").hidden = true;
+});
+
+$("sensor-form").addEventListener("submit", event => {
+  event.preventDefault();
+
+  const id = Number($("sensor-id").value);
+  const item = {
+    name: $("sensor-name").value.trim(),
+    location: $("sensor-location").value.trim(),
+    lat: Number($("sensor-lat").value),
+    lon: Number($("sensor-lon").value),
+    status: $("sensor-status").value
+  };
+
+  if (!item.name || !item.location ||
+      !Number.isFinite(item.lat) || !Number.isFinite(item.lon) ||
+      item.lat < -90 || item.lat > 90 ||
+      item.lon < -180 || item.lon > 180) {
+    showToast("Enter valid sensor details.");
+    return;
+  }
+
+  if (id) {
+    const existing = sensorById(id);
+    if (existing) Object.assign(existing, item);
+    showToast("Sensor updated in this demo.");
+  } else {
+    sensors.push({ id: nextSensorId++, ...item });
+    showToast("Sensor added in this demo.");
+  }
+
+  $("sensor-form-panel").hidden = true;
+  renderAll();
+});
+
+$("sensors-table").addEventListener("click", event => {
+  const editButton = event.target.closest("[data-edit-sensor]");
+  const deleteButton = event.target.closest("[data-delete-sensor]");
+
+  if (editButton) {
+    const sensor = sensorById(editButton.dataset.editSensor);
+    if (!sensor) return;
+
+    $("sensor-id").value = sensor.id;
+    $("sensor-name").value = sensor.name;
+    $("sensor-location").value = sensor.location;
+    $("sensor-lat").value = sensor.lat;
+    $("sensor-lon").value = sensor.lon;
+    $("sensor-status").value = sensor.status;
+    $("sensor-form-title").textContent = "Edit Sensor";
+    $("sensor-form-panel").hidden = false;
+    $("sensor-form-panel").scrollIntoView({ behavior: "smooth" });
+  }
+
+  if (deleteButton) {
+    const id = Number(deleteButton.dataset.deleteSensor);
+    if (!confirm("Delete this sensor and its readings from the demo?")) return;
+
+    sensors = sensors.filter(s => s.id !== id);
+    const removedReadingIds = readings.filter(r => r.sensorId === id).map(r => r.id);
+    readings = readings.filter(r => r.sensorId !== id);
+    removedReadingIds.forEach(id => resolvedAlerts.delete(id));
+
+    renderAll();
+    showToast("Sensor and related demo readings deleted.");
+  }
+});
+
+function getFilteredReadings() {
+  const sensorId = $("reading-sensor-filter").value;
+  const from = $("date-from").value;
+  const to = $("date-to").value;
+
+  return [...readings]
+    .filter(r => !sensorId || r.sensorId === Number(sensorId))
+    .filter(r => !from || r.date.slice(0, 10) >= from)
+    .filter(r => !to || r.date.slice(0, 10) <= to)
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
+function renderReadings() {
+  const filtered = getFilteredReadings();
+
+  $("record-count").textContent = filtered.length;
+  $("avg-aqi").textContent = filtered.length
+    ? Math.round(filtered.reduce((sum, r) => sum + r.aqi, 0) / filtered.length)
+    : "--";
+  $("max-aqi").textContent = filtered.length
+    ? Math.max(...filtered.map(r => r.aqi))
+    : "--";
+
+  $("readings-table").innerHTML = filtered.map(r => `
+    <tr>
+      <td>#${r.id}</td>
+      <td>${esc(sensorName(r.sensorId))}</td>
+      <td>${esc(fmtDate(r.date))}</td>
+      <td>${r.pm25}</td>
+      <td>${r.pm10}</td>
+      <td>${r.co2}</td>
+      <td>${badge(`${r.aqi} · ${aqiCategory(r.aqi)[0]}`, aqiCategory(r.aqi)[1])}</td>
+      <td><div class="table-actions">
+        <button class="mini-btn" data-edit-reading="${r.id}">Edit</button>
+        <button class="mini-btn delete" data-delete-reading="${r.id}">Delete</button>
+      </div></td>
+    </tr>
+  `).join("") || `<tr><td colspan="8" class="empty">No readings match these filters.</td></tr>`;
+}
+
+["reading-sensor-filter", "date-from", "date-to"].forEach(id => {
+  $(id).addEventListener("change", renderReadings);
+});
+
+$("clear-filters").addEventListener("click", () => {
+  $("reading-sensor-filter").value = "";
+  $("date-from").value = "";
+  $("date-to").value = "";
+  renderReadings();
+});
+
+$("add-reading").addEventListener("click", () => {
+  if (!sensors.length) {
+    showToast("Add a sensor before adding readings.");
+    return;
+  }
+
+  $("reading-form").reset();
+  $("reading-id").value = "";
+  $("reading-date").value = dateOffset(0, new Date().getHours());
+  $("reading-form-title").textContent = "Add Reading";
+  $("reading-form-panel").hidden = false;
+  $("reading-form-panel").scrollIntoView({ behavior: "smooth" });
+});
+
+$("cancel-reading").addEventListener("click", () => {
+  $("reading-form-panel").hidden = true;
+});
+
+$("reading-form").addEventListener("submit", event => {
+  event.preventDefault();
+
+  const id = Number($("reading-id").value);
+  const date = $("reading-date").value;
+  const item = {
+    sensorId: Number($("reading-sensor").value),
+    date,
+    pm25: Number($("reading-pm25").value),
+    pm10: Number($("reading-pm10").value),
+    co2: Number($("reading-co2").value),
+    aqi: Number($("reading-aqi").value)
+  };
+
+  if (!sensorById(item.sensorId) || !date || !Number.isFinite(new Date(date).getTime()) ||
+      ![item.pm25, item.pm10, item.co2, item.aqi].every(Number.isFinite) ||
+      item.pm25 < 0 || item.pm10 < 0 || item.co2 < 0 ||
+      item.aqi < 0 || item.aqi > 500) {
+    showToast("Check the sensor, date, and measurement values.");
+    return;
+  }
+
+  if (id) {
+    const existing = readings.find(r => r.id === id);
+    if (existing) Object.assign(existing, item);
+    resolvedAlerts.delete(id);
+    showToast("Reading updated in this demo.");
+  } else {
+    readings.push({ id: nextReadingId++, ...item });
+    showToast("Reading added in this demo.");
+  }
+
+  $("reading-form-panel").hidden = true;
+  renderAll();
+});
+
+$("readings-table").addEventListener("click", event => {
+  const edit = event.target.closest("[data-edit-reading]");
+  const del = event.target.closest("[data-delete-reading]");
+
+  if (edit) {
+    const r = readings.find(item => item.id === Number(edit.dataset.editReading));
+    if (!r) return;
+
+    $("reading-id").value = r.id;
+    $("reading-sensor").value = String(r.sensorId);
+    $("reading-date").value = r.date;
+    $("reading-pm25").value = r.pm25;
+    $("reading-pm10").value = r.pm10;
+    $("reading-co2").value = r.co2;
+    $("reading-aqi").value = r.aqi;
+    $("reading-form-title").textContent = "Edit Reading";
+    $("reading-form-panel").hidden = false;
+    $("reading-form-panel").scrollIntoView({ behavior: "smooth" });
+  }
+
+  if (del) {
+    const id = Number(del.dataset.deleteReading);
+    if (!confirm("Delete this demo reading?")) return;
+
+    readings = readings.filter(r => r.id !== id);
+    resolvedAlerts.delete(id);
+    renderAll();
+    showToast("Reading deleted from this demo.");
+  }
+});
+
+function renderAlerts() {
+  const alerts = getAlerts();
+  $("total-alerts").textContent = alerts.length;
+  $("unresolved-alerts").textContent = alerts.filter(a => a.status === "Open").length;
+
+  $("alerts-table").innerHTML = alerts.map(a => `
+    <tr>
+      <td>#${a.id}</td>
+      <td>${esc(sensorName(a.sensorId))}</td>
+      <td>${esc(sensorById(a.sensorId)?.location || "Unknown")}</td>
+      <td>${a.aqi}</td>
+      <td>${badge(a.severity, "severe")}</td>
+      <td>${esc(fmtDate(a.date))}</td>
+      <td>${badge(a.status, a.status.toLowerCase())}</td>
+      <td>${a.status === "Open"
+        ? `<button class="mini-btn" data-resolve="${a.id}">Resolve</button>`
+        : `<button class="mini-btn" data-reopen="${a.id}">Reopen</button>`}
+      </td>
+    </tr>
+  `).join("") || `<tr><td colspan="8" class="empty">No alerts. AQI alerts are generated above 150.</td></tr>`;
+}
+
+$("alerts-table").addEventListener("click", event => {
+  const resolve = event.target.closest("[data-resolve]");
+  const reopen = event.target.closest("[data-reopen]");
+
+  if (resolve) {
+    resolvedAlerts.add(Number(resolve.dataset.resolve));
+    showToast("Alert resolved in this demo.");
+  }
+  if (reopen) {
+    resolvedAlerts.delete(Number(reopen.dataset.reopen));
+    showToast("Alert reopened in this demo.");
+  }
+  renderAll();
+});
+
+function renderReports() {
+  $("total-readings").textContent = readings.length;
+  $("overall-average").textContent = readings.length
+    ? (readings.reduce((sum, r) => sum + r.aqi, 0) / readings.length).toFixed(1)
+    : "--";
+
+  const locations = sensors.map(s => {
+    const items = readings.filter(r => r.sensorId === s.id);
+    return {
+      location: s.location,
+      sensorCount: 1,
+      count: items.length,
+      highest: items.length ? Math.max(...items.map(r => r.aqi)) : null,
+      average: items.length
+        ? (items.reduce((sum, r) => sum + r.aqi, 0) / items.length).toFixed(1)
+        : null
+    };
+  });
+
+  const populated = locations.filter(x => x.highest !== null);
+  const worst = populated.sort((a, b) => b.highest - a.highest)[0];
+  $("worst-location").textContent = worst ? worst.location : "--";
+
+  $("location-report").innerHTML = locations.map(l => `
+    <tr><td>${esc(l.location)}</td><td>${l.sensorCount}</td><td>${l.count}</td>
+    <td>${l.highest ?? "--"}</td><td>${l.average ?? "--"}</td></tr>
+  `).join("") || `<tr><td colspan="5" class="empty">No locations available.</td></tr>`;
+
+  const days = {};
+  readings.forEach(r => {
+    const day = r.date.slice(0, 10);
+    if (!days[day]) days[day] = [];
+    days[day].push(r.aqi);
+  });
+
+  $("daily-report").innerHTML = Object.keys(days).sort().reverse().map(day => {
+    const values = days[day];
+    const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
+    return `<tr><td>${esc(day)}</td><td>${values.length}</td><td>${avg.toFixed(1)}</td></tr>`;
+  }).join("") || `<tr><td colspan="3" class="empty">No readings available.</td></tr>`;
+}
+
+function exportCSV() {
+  const rows = [
+    ["Reading ID", "Sensor", "Location", "Recorded At", "PM2.5", "PM10", "CO2 ppm", "AQI"],
+    ...getFilteredReadings().map(r => [
+      r.id, sensorName(r.sensorId),
+      sensorById(r.sensorId)?.location || "",
+      r.date, r.pm25, r.pm10, r.co2, r.aqi
+    ])
+  ];
+
+  const csv = rows.map(row => row.map(value => {
+    let s = String(value ?? "");
+    // Prevent spreadsheet formula injection in exported text fields.
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return `"${s.replace(/"/g, '""')}"`;
+  }).join(",")).join("\r\n");
+
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "airwatch-readings.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+  showToast("CSV export created.");
+}
+
+$("export-csv").addEventListener("click", exportCSV);
+
+function renderAll() {
+  renderSensorOptions();
+  renderDashboard();
+  renderSensors();
+  renderReadings();
+  renderAlerts();
+  renderReports();
+}
+
+renderAll();
