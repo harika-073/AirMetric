@@ -1,156 +1,651 @@
-/* ============ CONFIG ============
-   DEMO = true  -> uses in-browser sample data (preview only, NOT MySQL)
-   DEMO = false -> calls your PHP backend (api/*.php) which talks to MySQL
-================================== */
-const DEMO = true, API_BASE = 'api';
-const $ = (s, e = document) => e.querySelector(s);
-const cat = a => a <= 50 ? ['Good', 'g'] : a <= 100 ? ['Moderate', 'y'] : a <= 150 ? ['Unhealthy (Sensitive)', 'o'] : ['Unhealthy', 'r'];
-const badge = a => `<span class="pill ${cat(a)[1]}">${a} · ${cat(a)[0]}</span>`;
-const fmt = d => d.toISOString().slice(0, 16).replace('T', ' ');
-const ALERT_AQI = 150; // threshold (backend reads this from config)
+// ========================================
+// AIRWATCH - SMART AIR QUALITY MONITORING
+// Frontend demo using browser localStorage
+// ========================================
 
-/* ---------- demo "database" (illustrative data) ---------- */
-const db = { users: [{ u: 'admin', p: 'Admin@123', role: 'admin' }, { u: 'user', p: 'User@123', role: 'user' }], sensors: [], readings: [], alerts: [], id: { sensors: 1, readings: 1, alerts: 1 } };
-(function seed() {
-  const names = [['Central Park', 12.97, 77.59], ['Industrial Zone', 13.01, 77.55], ['Railway Station', 12.99, 77.57], ['University Campus', 12.93, 77.61], ['Riverside', 12.95, 77.52]];
-  names.forEach((n, i) => db.sensors.push({ sensor_id: db.id.sensors++, sensor_name: 'AW-' + (100 + i), location: n[0], latitude: n[1], longitude: n[2], status: i === 4 ? 'inactive' : 'active' }));
-  let s = 7; const rnd = () => (s = (s * 9301 + 49297) % 233280) / 233280;
-  db.sensors.forEach((x, i) => { for (let d = 13; d >= 0; d--) { const t = new Date(Date.now() - d * 864e5); const pm25 = Math.round(20 + i * 18 + rnd() * 40); addReading({ sensor_id: x.sensor_id, recorded_at: fmt(t), pm25, pm10: Math.round(pm25 * 1.6), co2: Math.round(400 + rnd() * 300), aqi: Math.round(pm25 * 1.9) }); } });
-})();
-function addReading(b) {
-  const r = { reading_id: db.id.readings++, ...b };
-  db.readings.push(r);
-  if (r.aqi > ALERT_AQI) db.alerts.push({ alert_id: db.id.alerts++, reading_id: r.reading_id, sensor_id: r.sensor_id, level: r.aqi > 200 ? 'critical' : 'warning', message: `AQI ${r.aqi} exceeded threshold ${ALERT_AQI}`, status: 'open', created_at: r.recorded_at });
-}
-function demo(m, res, id, body) {
-  const key = { sensors: 'sensor_id', readings: 'reading_id', alerts: 'alert_id' }[res], t = db[res];
-  const sName = i => (db.sensors.find(s => s.sensor_id == i) || {}).sensor_name;
-  if (res === 'auth') {
-    if (body.action === 'register') { if (db.users.find(u => u.u === body.username)) throw Error('Username already taken'); db.users.push({ u: body.username, e: body.email, p: body.password, role: 'user' }); return { ok: 1 }; }
-    const u = db.users.find(u => (u.u === body.username || u.e === body.username) && u.p === body.password && u.role === body.role);
-    if (!u) throw Error('Invalid username, password or role'); return { username: u.u, role: u.role };
+const DEMO_EMAIL = "demo@airwatch.com";
+const DEMO_PASSWORD = "AirWatch123";
+
+const STORAGE_KEY = "airwatch_readings_v1";
+const SESSION_KEY = "airwatch_demo_session";
+
+const $ = (id) => document.getElementById(id);
+
+let readings = loadReadings();
+
+// ---------- STORAGE ----------
+
+function loadReadings() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch (error) {
+    console.error("Unable to load readings:", error);
+    return [];
   }
-  if (res === 'reports') {
-    const rs = db.readings.map(r => ({ ...r, loc: db.sensors.find(s => s.sensor_id == r.sensor_id).location }));
-    const grp = (f) => rs.reduce((o, r) => ((o[f(r)] = o[f(r)] || []).push(r), o), {}), avg = (a, k) => Math.round(a.reduce((s, r) => s + r[k], 0) / a.length);
-    return {
-      maxByLocation: Object.entries(grp(r => r.loc)).map(([location, a]) => ({ location, max_aqi: Math.max(...a.map(r => r.aqi)) })).sort((a, b) => b.max_aqi - a.max_aqi),
-      dailyAvg: Object.entries(grp(r => r.recorded_at.slice(0, 10))).map(([day, a]) => ({ day, avg_aqi: avg(a, 'aqi') })).sort((a, b) => b.day.localeCompare(a.day)),
-      bySensor: db.sensors.map(s => { const a = rs.filter(r => r.sensor_id == s.sensor_id); return { sensor_name: s.sensor_name, readings: a.length, avg_pm25: avg(a, 'pm25'), avg_pm10: avg(a, 'pm10'), avg_co2: avg(a, 'co2'), avg_aqi: avg(a, 'aqi') } })
+}
+
+function saveReadings() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(readings));
+}
+
+// ---------- LOGIN AND LOGOUT ----------
+
+$("fillDemo").addEventListener("click", () => {
+  $("email").value = DEMO_EMAIL;
+  $("password").value = DEMO_PASSWORD;
+  $("loginError").textContent = "";
+});
+
+$("loginForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  const email = $("email").value.trim().toLowerCase();
+  const password = $("password").value;
+
+  if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
+    sessionStorage.setItem(SESSION_KEY, "true");
+    $("loginError").textContent = "";
+    showDashboard();
+  } else {
+    $("loginError").textContent =
+      "Invalid demo credentials. Use the demo login details shown below.";
+  }
+});
+
+$("logoutBtn").addEventListener("click", () => {
+  sessionStorage.removeItem(SESSION_KEY);
+  $("dashboardPage").classList.add("hidden");
+  $("loginPage").classList.remove("hidden");
+  $("password").value = "";
+  $("loginError").textContent = "";
+});
+
+function showDashboard() {
+  $("loginPage").classList.add("hidden");
+  $("dashboardPage").classList.remove("hidden");
+
+  renderAll();
+  showSection("overview");
+}
+
+// Restore the demo session for this browser tab.
+if (sessionStorage.getItem(SESSION_KEY) === "true") {
+  showDashboard();
+}
+
+// ---------- NAVIGATION ----------
+
+const sectionNames = {
+  overview: "Dashboard Overview",
+  readings: "Sensor Readings",
+  history: "Historical Analysis",
+  sensors: "Sensors"
+};
+
+function showSection(name) {
+  const validSections = ["overview", "readings", "history", "sensors"];
+
+  if (!validSections.includes(name)) return;
+
+  document.querySelectorAll(".content-section").forEach((section) => {
+    section.classList.add("hidden");
+  });
+
+  $(name + "Section").classList.remove("hidden");
+  $("pageTitle").textContent = sectionNames[name];
+
+  document.querySelectorAll(".nav-btn").forEach((button) => {
+    button.classList.toggle("active", button.dataset.section === name);
+  });
+
+  if (name === "overview" || name === "history") {
+    drawCharts();
+  }
+}
+
+document.querySelectorAll(".nav-btn").forEach((button) => {
+  button.addEventListener("click", () => {
+    showSection(button.dataset.section);
+  });
+});
+
+document.querySelectorAll("[data-go]").forEach((button) => {
+  button.addEventListener("click", () => {
+    showSection(button.dataset.go);
+  });
+});
+
+$("addReadingShortcut").addEventListener("click", () => {
+  showSection("readings");
+  $("sensorId").focus();
+});
+
+// ---------- AQI CLASSIFICATION ----------
+
+function getAqiStatus(aqi) {
+  if (aqi <= 50) return { label: "Good", className: "good" };
+  if (aqi <= 100) return { label: "Moderate", className: "moderate" };
+  if (aqi <= 200) return { label: "Poor", className: "poor" };
+  if (aqi <= 300) return { label: "Very Poor", className: "poor" };
+  return { label: "Severe", className: "poor" };
+}
+
+function statusBadge(aqi) {
+  const status = getAqiStatus(Number(aqi));
+
+  return `<span class="aqi-badge ${status.className}">
+    ${escapeHTML(status.label)}
+  </span>`;
+}
+
+// ---------- SAFE HTML DISPLAY ----------
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => {
+    const replacements = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
     };
+
+    return replacements[character];
+  });
+}
+
+function formatDate(value) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "Unknown";
+
+  return date.toLocaleString([], {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function sortedReadings() {
+  return [...readings].sort(
+    (a, b) => new Date(b.date) - new Date(a.date)
+  );
+}
+
+// ---------- ADD A SENSOR READING ----------
+
+function setDefaultDate() {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+
+  $("readingDate").value = now.toISOString().slice(0, 16);
+}
+
+setDefaultDate();
+
+$("readingForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  const aqi = Number($("aqi").value);
+  const pm25 = Number($("pm25").value);
+  const pm10 = Number($("pm10").value);
+  const temperature = Number($("temperature").value);
+  const humidity = Number($("humidity").value);
+  const date = new Date($("readingDate").value);
+
+  if (
+    !Number.isFinite(aqi) ||
+    aqi < 0 ||
+    aqi > 500 ||
+    !Number.isFinite(pm25) ||
+    pm25 < 0 ||
+    !Number.isFinite(pm10) ||
+    pm10 < 0 ||
+    !Number.isFinite(temperature) ||
+    !Number.isFinite(humidity) ||
+    humidity < 0 ||
+    humidity > 100 ||
+    Number.isNaN(date.getTime())
+  ) {
+    $("readingMessage").textContent =
+      "Please check the values and enter valid sensor data.";
+    return;
   }
-  if (m === 'GET') return t.map(x => ({ ...x, sensor_name: sName(x.sensor_id) }));
-  if (m === 'POST') { if (res === 'readings') addReading(body); else t.push({ [key]: db.id[res]++, ...body }); return { ok: 1 }; }
-  if (m === 'PUT') { Object.assign(t.find(x => x[key] == id), body); return { ok: 1 }; }
-  if (m === 'DELETE') { db[res] = t.filter(x => x[key] != id); if (res === 'sensors') { db.readings = db.readings.filter(r => r.sensor_id != id); db.alerts = db.alerts.filter(a => a.sensor_id != id) } return { ok: 1 }; }
+
+  const reading = {
+    id: createId(),
+    sensorId: $("sensorId").value.trim(),
+    location: $("location").value.trim(),
+    aqi,
+    pm25,
+    pm10,
+    temperature,
+    humidity,
+    date: date.toISOString()
+  };
+
+  if (!reading.sensorId || !reading.location) {
+    $("readingMessage").textContent =
+      "Sensor ID and location are required.";
+    return;
+  }
+
+  readings.push(reading);
+
+  try {
+    saveReadings();
+  } catch (error) {
+    readings.pop();
+    $("readingMessage").textContent =
+      "Unable to save data in this browser. Check browser storage settings.";
+    return;
+  }
+
+  $("readingForm").reset();
+  setDefaultDate();
+
+  $("readingMessage").textContent = "Reading saved successfully!";
+  renderAll();
+
+  // Clear the success message after the next user action.
+  window.setTimeout(() => {
+    if ($("readingMessage")) {
+      $("readingMessage").textContent = "";
+    }
+  }, 4000);
+});
+
+function createId() {
+  return Date.now().toString(36) +
+    Math.random().toString(36).slice(2, 9);
 }
-async function api(m, res, id, body) {
-  if (DEMO) return demo(m, res, id, body);
-  const r = await fetch(`${API_BASE}/${res}.php${id ? '?id=' + id : ''}`, { method: m, credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
-  const j = await r.json(); if (!r.ok) throw Error(j.error || 'Request failed'); return j;
+
+// ---------- READINGS TABLE / SEARCH ----------
+
+$("searchReadings").addEventListener("input", renderReadingsTable);
+
+function renderReadingsTable() {
+  const query = $("searchReadings").value.trim().toLowerCase();
+
+  const filtered = sortedReadings().filter((reading) => {
+    return (
+      String(reading.sensorId).toLowerCase().includes(query) ||
+      String(reading.location).toLowerCase().includes(query)
+    );
+  });
+
+  $("readingsTableBody").innerHTML = filtered.map((reading) => `
+    <tr>
+      <td>${escapeHTML(formatDate(reading.date))}</td>
+      <td>${escapeHTML(reading.sensorId)}</td>
+      <td>${escapeHTML(reading.location)}</td>
+      <td><strong>${Number(reading.aqi)}</strong> ${statusBadge(reading.aqi)}</td>
+      <td>${Number(reading.pm25).toFixed(1)}</td>
+      <td>${Number(reading.pm10).toFixed(1)}</td>
+      <td>${Number(reading.temperature).toFixed(1)}°C</td>
+      <td>${Number(reading.humidity).toFixed(1)}%</td>
+      <td>
+        <button class="delete-btn" data-delete="${escapeHTML(reading.id)}">
+          Delete
+        </button>
+      </td>
+    </tr>
+  `).join("");
+
+  $("readingsEmpty").classList.toggle("hidden", filtered.length > 0);
 }
 
-/* ---------- state + helpers ---------- */
-let S = { user: null, sensors: [], readings: [], alerts: [] }, charts = [];
-const admin = () => S.user && S.user.role === 'admin';
-const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200) };
-async function load() { [S.sensors, S.readings, S.alerts] = await Promise.all(['sensors', 'readings', 'alerts'].map(r => api('GET', r))); S.readings.sort((a, b) => b.recorded_at.localeCompare(a.recorded_at)) }
-const table = (id, heads, rows) => `<div class="card wrap"><table id="${id}"><thead><tr>${heads.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows || `<tr><td colspan="${heads.length}" class="mut">No records</td></tr>`}</tbody></table></div>`;
-window.filt = id => { const q = ($('#q')?.value || '').toLowerCase(), s = $('#sf')?.value || ''; document.querySelectorAll(`#${id} tbody tr`).forEach(r => r.hidden = !(r.textContent.toLowerCase().includes(q) && (!s || r.dataset.s === s))) };
-const acts = (res, id) => admin() ? `<td><button class="btn sm" onclick="edit('${res}',${id})">Edit</button> <button class="btn sm red" onclick="del('${res}',${id})">Delete</button></td>` : '';
+$("readingsTableBody").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-delete]");
+  if (!button) return;
 
-/* ---------- generic add/edit modal ---------- */
-const F = {
-  sensors: () => [['sensor_name', 'Sensor name'], ['location', 'Location'], ['latitude', 'Latitude', 'number'], ['longitude', 'Longitude', 'number'], ['status', 'Status', 'select', ['active', 'inactive', 'maintenance']]],
-  readings: () => [['sensor_id', 'Sensor', 'select', S.sensors.map(s => [s.sensor_id, s.sensor_name + ' – ' + s.location])], ['recorded_at', 'Recorded at (YYYY-MM-DD HH:MM)'], ['pm25', 'PM2.5 (µg/m³)', 'number'], ['pm10', 'PM10 (µg/m³)', 'number'], ['co2', 'CO₂ (ppm)', 'number'], ['aqi', 'AQI', 'number']]
-};
-window.edit = (res, id) => {
-  const row = id ? S[res].find(x => x[res === 'sensors' ? 'sensor_id' : 'reading_id'] == id) : (res === 'readings' ? { recorded_at: fmt(new Date()) } : {});
-  $('#mt').textContent = (id ? 'Edit ' : 'Add ') + res.slice(0, -1);
-  $('#mf').innerHTML = F[res]().map(([n, l, t, o]) => `<label>${l}${t === 'select' ? `<select name="${n}">${o.map(x => { const [v, tx] = Array.isArray(x) ? x : [x, x]; return `<option value="${v}" ${row[n] == v ? 'selected' : ''}>${tx}</option>` }).join('')}</select>` : `<input name="${n}" type="${t || 'text'}" step="any" value="${row[n] ?? ''}" required>`}</label>`).join('') + '<button class="btn">Save</button> <button type="button" class="btn ghost" onclick="$(\'#modal\').hidden=true" style="margin-top:8px">Cancel</button>';
-  $('#mf').onsubmit = async e => { e.preventDefault(); const b = Object.fromEntries(new FormData(e.target)); F[res]().forEach(([n, , t]) => { if (t === 'number') b[n] = +b[n] }); b.sensor_id && (b.sensor_id = +b.sensor_id);
-    try { await api(id ? 'PUT' : 'POST', res, id, b); $('#modal').hidden = true; toast('Saved'); go(cur) } catch (x) { toast(x.message) } };
-  $('#modal').hidden = false;
-};
-window.del = async (res, id) => { if (!confirm('Delete this record?')) return; try { await api('DELETE', res, id); toast('Deleted'); go(cur) } catch (x) { toast(x.message) } };
-window.resolve = async id => { await api('PUT', 'alerts', id, { status: 'resolved' }); go(cur) };
+  const id = button.dataset.delete;
+  const reading = readings.find((item) => item.id === id);
 
-/* ---------- views ---------- */
-const V = {};
-V.dashboard = () => {
-  const latest = S.readings[0], open = S.alerts.filter(a => a.status === 'open').length;
-  const lastBy = S.sensors.map(s => S.readings.find(r => r.sensor_id == s.sensor_id)).filter(Boolean);
-  return `<div class="grid">
-   <div class="card stat"><span>Total sensors</span><b>${S.sensors.length}</b></div>
-   <div class="card stat"><span>Active sensors</span><b style="color:var(--g)">${S.sensors.filter(s => s.status === 'active').length}</b></div>
-   <div class="card stat"><span>Latest AQI</span><b>${latest ? badge(latest.aqi) : '—'}</b></div>
-   <div class="card stat"><span>Open alerts</span><b style="color:var(--r)">${open}</b></div>
-   <div class="card stat"><span>Total alerts</span><b>${S.alerts.length}</b></div></div>
-   <h3>Latest reading per sensor</h3>${table('t0', ['Sensor', 'Location', 'Time', 'PM2.5', 'PM10', 'CO₂', 'AQI'], lastBy.map(r => `<tr><td>${r.sensor_name}</td><td>${S.sensors.find(s => s.sensor_id == r.sensor_id).location}</td><td>${r.recorded_at}</td><td>${r.pm25}</td><td>${r.pm10}</td><td>${r.co2}</td><td>${badge(r.aqi)}</td></tr>`).join(''))}`;
-};
-V.sensors = () => `<div class="bar"><input id="q" placeholder="Search sensors…" oninput="filt('t1')"><select id="sf" onchange="filt('t1')"><option value="">All status</option><option>active</option><option>inactive</option><option>maintenance</option></select>${admin() ? '<button class="btn" onclick="edit(\'sensors\')">+ Add sensor</button>' : ''}</div>` +
-  table('t1', ['ID', 'Name', 'Location', 'Lat', 'Long', 'Status', admin() ? 'Actions' : ''], S.sensors.map(s => `<tr data-s="${s.status}"><td>${s.sensor_id}</td><td>${s.sensor_name}</td><td>${s.location}</td><td>${s.latitude}</td><td>${s.longitude}</td><td><span class="pill ${s.status === 'active' ? 'g' : s.status === 'inactive' ? 'r' : 'y'}">${s.status}</span></td>${acts('sensors', s.sensor_id)}</tr>`).join(''));
-V.readings = () => `<div class="bar"><input id="q" placeholder="Search…" oninput="rfilt()"><select id="sf" onchange="rfilt()"><option value="">All sensors</option>${S.sensors.map(s => `<option>${s.sensor_name}</option>`).join('')}</select><input type="date" id="d1" onchange="rfilt()" title="From"><input type="date" id="d2" onchange="rfilt()" title="To">${admin() ? '<button class="btn" onclick="edit(\'readings\')">+ Add reading</button>' : ''}</div>` +
-  table('t2', ['ID', 'Sensor', 'Recorded at', 'PM2.5', 'PM10', 'CO₂', 'AQI', admin() ? 'Actions' : ''], S.readings.map(r => `<tr data-s="${r.sensor_name}" data-d="${r.recorded_at.slice(0, 10)}"><td>${r.reading_id}</td><td>${r.sensor_name}</td><td>${r.recorded_at}</td><td>${r.pm25}</td><td>${r.pm10}</td><td>${r.co2}</td><td>${badge(r.aqi)}</td>${acts('readings', r.reading_id)}</tr>`).join(''));
-window.rfilt = () => { const q = $('#q').value.toLowerCase(), s = $('#sf').value, a = $('#d1').value, b = $('#d2').value; document.querySelectorAll('#t2 tbody tr').forEach(r => { const d = r.dataset.d; r.hidden = !(r.textContent.toLowerCase().includes(q) && (!s || r.dataset.s === s) && (!a || d >= a) && (!b || d <= b)) }) };
-V.charts = () => `<div class="bar"><select id="cs" onchange="drawCharts()"><option value="">All sensors (daily average)</option>${S.sensors.map(s => `<option value="${s.sensor_id}">${s.sensor_name} – ${s.location}</option>`).join('')}</select></div>
-  <div class="two"><div class="card"><h3>AQI trend</h3><canvas id="c1"></canvas></div><div class="card"><h3>Pollutant comparison by sensor</h3><canvas id="c2"></canvas></div></div>`;
-window.drawCharts = () => {
-  charts.forEach(c => c.destroy()); charts = []; const cs = getComputedStyle(document.documentElement); Chart.defaults.color = cs.getPropertyValue('--mut').trim(); Chart.defaults.borderColor = cs.getPropertyValue('--line').trim();
-  const sid = $('#cs').value, rs = S.readings.filter(r => !sid || r.sensor_id == sid).slice().reverse(), byDay = {};
-  rs.forEach(r => (byDay[r.recorded_at.slice(0, 10)] = byDay[r.recorded_at.slice(0, 10)] || []).push(r.aqi));
-  const labels = Object.keys(byDay), data = labels.map(d => Math.round(byDay[d].reduce((a, b) => a + b) / byDay[d].length));
-  charts.push(new Chart($('#c1'), { type: 'line', data: { labels, datasets: [{ label: 'AQI', data, borderColor: '#3b82f6', backgroundColor: '#3b82f633', fill: true, tension: .3, pointBackgroundColor: data.map(v => ({ g: '#22c55e', y: '#eab308', o: '#f97316', r: '#ef4444' })[cat(v)[1]]) }] } }));
-  const avg = (k, s) => { const a = S.readings.filter(r => r.sensor_id == s.sensor_id); return a.length ? Math.round(a.reduce((x, r) => x + r[k], 0) / a.length) : 0 };
-  charts.push(new Chart($('#c2'), { type: 'bar', data: { labels: S.sensors.map(s => s.sensor_name), datasets: [{ label: 'PM2.5', data: S.sensors.map(s => avg('pm25', s)), backgroundColor: '#ef4444' }, { label: 'PM10', data: S.sensors.map(s => avg('pm10', s)), backgroundColor: '#f97316' }, { label: 'CO₂ (ppm, right axis)', data: S.sensors.map(s => avg('co2', s)), backgroundColor: '#22c55e', yAxisID: 'y1' }] }, options: { scales: { y1: { position: 'right', grid: { drawOnChartArea: false } } } } }));
-};
-V.reports = async () => {
-  const r = await api('GET', 'reports');
-  return `<div class="two"><div><h3>Highest AQI by location</h3>${table('r1', ['Location', 'Max AQI'], r.maxByLocation.map(x => `<tr><td>${x.location}</td><td>${badge(x.max_aqi)}</td></tr>`).join(''))}</div>
-  <div><h3>Daily average AQI</h3>${table('r2', ['Day', 'Avg AQI'], r.dailyAvg.slice(0, 10).map(x => `<tr><td>${x.day}</td><td>${badge(x.avg_aqi)}</td></tr>`).join(''))}</div></div>
-  <h3>Sensor-wise readings</h3>${table('r3', ['Sensor', 'Readings', 'Avg PM2.5', 'Avg PM10', 'Avg CO₂', 'Avg AQI'], r.bySensor.map(x => `<tr><td>${x.sensor_name}</td><td>${x.readings}</td><td>${x.avg_pm25}</td><td>${x.avg_pm10}</td><td>${x.avg_co2}</td><td>${badge(x.avg_aqi)}</td></tr>`).join(''))}`;
-};
-V.alerts = () => table('t4', ['ID', 'Sensor', 'Level', 'Message', 'Time', 'Status', admin() ? 'Action' : ''], S.alerts.slice().reverse().map(a => `<tr><td>${a.alert_id}</td><td>${S.sensors.find(s => s.sensor_id == a.sensor_id)?.sensor_name}</td><td><span class="pill ${a.level === 'critical' ? 'r' : 'o'}">${a.level}</span></td><td>${a.message}</td><td>${a.created_at}</td><td>${a.status}</td>${admin() ? `<td>${a.status === 'open' ? `<button class="btn sm" onclick="resolve(${a.alert_id})">Resolve</button>` : '✔'}</td>` : ''}</tr>`).join(''));
-V.docs = () => `<div class="card"><h3>ER diagram (preview)</h3><div class="er">
-  <div><b>users</b><br>🔑 user_id<br>username, email, password_hash, role, created_at</div>
-  <div><b>sensors</b><br>🔑 sensor_id<br>sensor_name, location, latitude, longitude, status</div>
-  <div><b>readings</b><br>🔑 reading_id<br>🔗 sensor_id → sensors<br>recorded_at, pm25, pm10, co2, aqi</div>
-  <div><b>alerts</b><br>🔑 alert_id<br>🔗 reading_id → readings<br>🔗 sensor_id → sensors<br>level, message, status, created_at</div></div>
-  <p class="mut" style="margin-top:12px">sensors 1 — N readings · readings 1 — 0..1 alerts · sensors 1 — N alerts. Functional dependencies, 3NF, SQL and transaction notes will be added once the backend and db.sql are done.</p></div>`;
-const TITLES = { dashboard: 'Dashboard', sensors: 'Sensors', readings: 'Historical Readings', charts: 'Charts', reports: 'Reports', alerts: 'Pollution Alerts', docs: 'Project Documentation' };
+  if (!reading) return;
 
-/* ---------- router ---------- */
-let cur = 'dashboard';
-async function go(v) {
-  cur = v; try { await load() } catch (x) { return toast(x.message) }
-  charts.forEach(c => c.destroy()); charts = [];
-  document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('on', a.dataset.v === v));
-  $('#title').textContent = TITLES[v]; $('#view').innerHTML = await V[v](); if (v === 'charts') drawCharts();
-  $('#side').classList.remove('open');
+  const confirmed = window.confirm(
+    `Delete the reading from ${reading.location}?`
+  );
+
+  if (!confirmed) return;
+
+  readings = readings.filter((item) => item.id !== id);
+  saveReadings();
+  renderAll();
+});
+
+// ---------- DASHBOARD SUMMARY ----------
+
+function renderOverview() {
+  const recent = sortedReadings();
+  const latest = recent[0];
+
+  $("totalReadings").textContent = readings.length;
+
+  if (!latest) {
+    $("latestAqi").textContent = "--";
+    $("latestPm25").textContent = "--";
+    $("latestPm10").textContent = "--";
+    $("aqiStatus").textContent = "No data";
+    $("aqiStatus").className = "status-badge";
+  } else {
+    $("latestAqi").textContent = latest.aqi;
+    $("latestPm25").textContent = Number(latest.pm25).toFixed(1);
+    $("latestPm10").textContent = Number(latest.pm10).toFixed(1);
+
+    const status = getAqiStatus(Number(latest.aqi));
+    $("aqiStatus").textContent = status.label;
+    $("aqiStatus").className = "status-badge " + status.className;
+  }
+
+  const recentRows = recent.slice(0, 5);
+
+  $("recentTableBody").innerHTML = recentRows.map((reading) => `
+    <tr>
+      <td>${escapeHTML(formatDate(reading.date))}</td>
+      <td>${escapeHTML(reading.location)}</td>
+      <td><strong>${Number(reading.aqi)}</strong></td>
+      <td>${Number(reading.pm25).toFixed(1)}</td>
+      <td>${Number(reading.pm10).toFixed(1)}</td>
+      <td>${statusBadge(reading.aqi)}</td>
+    </tr>
+  `).join("");
+
+  $("recentEmpty").classList.toggle("hidden", recentRows.length > 0);
 }
-document.querySelectorAll('.nav a').forEach(a => a.onclick = () => go(a.dataset.v));
-$('#burger').onclick = () => $('#side').classList.toggle('open');
 
-/* ---------- auth ---------- */
-let role = 'user', reg = false;
-function authUI() {
-  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.r === role));
-  $('#lf').hidden = reg; $('#rf').hidden = !reg; $('#lbt').textContent = 'Login as ' + role; $('#err').textContent = '';
-  $('#sw').innerHTML = role === 'admin' ? 'Admin accounts are created by the system owner.' : reg ? 'Have an account? <a id="tg">Login</a>' : 'New here? <a id="tg">Register</a>';
-  const t = $('#tg'); if (t) t.onclick = () => { reg = !reg; authUI() };
-  $('#hint').textContent = DEMO ? 'Demo preview only (not MySQL): ' + (role === 'admin' ? 'admin / Admin@123' : 'user / User@123') : '';
+// ---------- HISTORICAL ANALYSIS ----------
+
+function renderHistory() {
+  if (!readings.length) {
+    $("averageAqi").textContent = "--";
+    $("highestAqi").textContent = "--";
+    $("lowestAqi").textContent = "--";
+    $("historySummary").textContent = "No data is available yet.";
+    $("historyEmpty").classList.remove("hidden");
+    return;
+  }
+
+  const values = readings.map((reading) => Number(reading.aqi));
+  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const highest = Math.max(...values);
+  const lowest = Math.min(...values);
+
+  $("averageAqi").textContent = average.toFixed(1);
+  $("highestAqi").textContent = highest;
+  $("lowestAqi").textContent = lowest;
+  $("historyEmpty").classList.add("hidden");
+
+  const overallStatus = getAqiStatus(average).label;
+
+  $("historySummary").textContent =
+    `There are ${readings.length} stored readings. ` +
+    `The average AQI is ${average.toFixed(1)}, classified as ${overallStatus}. ` +
+    `The highest recorded AQI is ${highest}, and the lowest is ${lowest}. ` +
+    `These results describe only the records entered in this demo.`;
 }
-document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { role = b.dataset.r; reg = false; authUI() });
-$('#lf').onsubmit = async e => { e.preventDefault(); const f = new FormData(e.target); try { S.user = await api('POST', 'auth', null, { action: 'login', role, username: f.get('u'), password: f.get('p') }); try { sessionStorage.setItem('aw', JSON.stringify(S.user)); $('#rm').checked ? localStorage.setItem('awu', f.get('u')) : localStorage.removeItem('awu') } catch { } start() } catch (x) { $('#err').textContent = x.message } };
-$('#rf').onsubmit = async e => { e.preventDefault(); const f = new FormData(e.target); try { await api('POST', 'auth', null, { action: 'register', username: f.get('u'), email: f.get('e'), password: f.get('p') }); reg = false; authUI(); toast('Registered! Please login.') } catch (x) { $('#err').textContent = x.message } };
-$('#logout').onclick = async () => { try { sessionStorage.removeItem('aw'); if (!DEMO) await api('POST', 'auth', null, { action: 'logout' }) } catch { } location.reload() };
-function start() { $('#auth').hidden = true; $('#app').hidden = false; $('#who').textContent = S.user.username + ' · ' + S.user.role; $('#who').className = 'pill ' + (admin() ? 'o' : 'g'); go('dashboard') }
-authUI(); try { const u = sessionStorage.getItem('aw'); if (u) { S.user = JSON.parse(u); start() } } catch { }
 
-/* ---------- theme toggle, password eye, remember me, forgot password ---------- */
-function theme(t) { document.documentElement.dataset.theme = t; try { localStorage.setItem('awt', t) } catch { } document.querySelectorAll('.moon').forEach(b => b.textContent = t === 'dark' ? '☀️' : '🌙'); if ($('#c1')) drawCharts() }
-document.querySelectorAll('.moon').forEach(b => b.onclick = () => theme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
-let saved = 'light'; try { saved = localStorage.getItem('awt') || 'light' } catch { } theme(saved);
-$('#eye').onclick = () => { const p = $('#pw'); p.type = p.type === 'password' ? 'text' : 'password' };
-$('#fp').onclick = () => toast('Ask your admin to reset your password (email reset comes with the backend)');
-try { const v = localStorage.getItem('awu'); if (v) $('#lf [name=u]').value = v } catch { }
+// ---------- SENSOR LIST ----------
+
+function renderSensors() {
+  const sensorMap = new Map();
+
+  readings.forEach((reading) => {
+    const id = reading.sensorId;
+
+    if (!sensorMap.has(id)) {
+      sensorMap.set(id, {
+        sensorId: id,
+        location: reading.location,
+        count: 0,
+        latestDate: reading.date,
+        latestAqi: Number(reading.aqi)
+      });
+    }
+
+    const sensor = sensorMap.get(id);
+    sensor.count++;
+
+    if (new Date(reading.date) > new Date(sensor.latestDate)) {
+      sensor.latestDate = reading.date;
+      sensor.latestAqi = Number(reading.aqi);
+      sensor.location = reading.location;
+    }
+  });
+
+  const sensors = [...sensorMap.values()];
+
+  $("sensorCards").innerHTML = sensors.map((sensor) => `
+    <article class="sensor-card">
+      <div class="sensor-icon">⌖</div>
+      <h4>${escapeHTML(sensor.sensorId)}</h4>
+      <p>Location: ${escapeHTML(sensor.location)}</p>
+      <p>Saved readings: <strong>${sensor.count}</strong></p>
+      <p>Latest AQI: <strong>${sensor.latestAqi}</strong></p>
+      <p>Latest record: ${escapeHTML(formatDate(sensor.latestDate))}</p>
+      ${statusBadge(sensor.latestAqi)}
+    </article>
+  `).join("");
+
+  $("sensorsEmpty").classList.toggle("hidden", sensors.length > 0);
+}
+
+// ---------- DRAW AQI CHARTS ----------
+
+function drawCharts() {
+  drawAqiChart("aqiChart");
+  drawAqiChart("historyChart");
+}
+
+function drawAqiChart(canvasId) {
+  const canvas = $(canvasId);
+  if (!canvas) return;
+
+  const emptyElement =
+    canvasId === "aqiChart" ? $("chartEmpty") : $("historyEmpty");
+
+  const context = canvas.getContext("2d");
+  const width = Math.max(canvas.clientWidth, 280);
+  const height = canvasId === "aqiChart" ? 240 : 270;
+  const pixelRatio = window.devicePixelRatio || 1;
+
+  canvas.width = width * pixelRatio;
+  canvas.height = height * pixelRatio;
+  canvas.style.height = height + "px";
+
+  context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  context.clearRect(0, 0, width, height);
+
+  const records = [...readings]
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .slice(-12);
+
+  if (!records.length) {
+    if (emptyElement) emptyElement.classList.remove("hidden");
+    return;
+  }
+
+  if (emptyElement) emptyElement.classList.add("hidden");
+
+  const padding = { left: 42, right: 15, top: 20, bottom: 42 };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+
+  const maxValue = Math.max(
+    100,
+    Math.ceil(Math.max(...records.map((item) => Number(item.aqi))) / 50) * 50
+  );
+
+  // Horizontal grid lines and labels.
+  context.font = "10px Inter, Arial";
+  context.textAlign = "right";
+  context.textBaseline = "middle";
+
+  for (let step = 0; step <= 4; step++) {
+    const value = (maxValue / 4) * step;
+    const y = padding.top + plotHeight - (value / maxValue) * plotHeight;
+
+    context.strokeStyle = "#e8efeb";
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo(padding.left, y);
+    context.lineTo(width - padding.right, y);
+    context.stroke();
+
+    context.fillStyle = "#87968e";
+    context.fillText(String(Math.round(value)), padding.left - 8, y);
+  }
+
+  const points = records.map((record, index) => {
+    const x = records.length === 1
+      ? padding.left + plotWidth / 2
+      : padding.left + (index / (records.length - 1)) * plotWidth;
+
+    const y = padding.top + plotHeight -
+      (Number(record.aqi) / maxValue) * plotHeight;
+
+    return { x, y, record };
+  });
+
+  // Area under the line.
+  context.beginPath();
+  context.moveTo(points[0].x, padding.top + plotHeight);
+
+  points.forEach((point) => {
+    context.lineTo(point.x, point.y);
+  });
+
+  context.lineTo(points[points.length - 1].x, padding.top + plotHeight);
+  context.closePath();
+  context.fillStyle = "rgba(21, 150, 106, 0.10)";
+  context.fill();
+
+  // AQI line.
+  context.beginPath();
+
+  points.forEach((point, index) => {
+    if (index === 0) {
+      context.moveTo(point.x, point.y);
+    } else {
+      context.lineTo(point.x, point.y);
+    }
+  });
+
+  context.strokeStyle = "#15966a";
+  context.lineWidth = 2.5;
+  context.lineJoin = "round";
+  context.stroke();
+
+  // Points and date labels.
+  points.forEach((point, index) => {
+    context.beginPath();
+    context.arc(point.x, point.y, 4, 0, Math.PI * 2);
+    context.fillStyle = "#15966a";
+    context.fill();
+
+    context.strokeStyle = "#ffffff";
+    context.lineWidth = 2;
+    context.stroke();
+
+    if (
+      records.length <= 6 ||
+      index === 0 ||
+      index === points.length - 1 ||
+      index % 2 === 0
+    ) {
+      const date = new Date(point.record.date);
+      const label = Number.isNaN(date.getTime())
+        ? ""
+        : date.toLocaleDateString([], {
+            month: "short",
+            day: "numeric"
+          });
+
+      context.fillStyle = "#87968e";
+      context.font = "9px Inter, Arial";
+      context.textAlign = "center";
+      context.textBaseline = "top";
+      context.fillText(label, point.x, padding.top + plotHeight + 12);
+    }
+  });
+}
+
+window.addEventListener("resize", () => {
+  if (!$("dashboardPage").classList.contains("hidden")) {
+    drawCharts();
+  }
+});
+
+// ---------- CSV EXPORT ----------
+
+function exportCsv() {
+  if (!readings.length) {
+    window.alert("There are no readings to export yet.");
+    return;
+  }
+
+  const headers = [
+    "Reading ID",
+    "Sensor ID",
+    "Location",
+    "AQI",
+    "PM2.5",
+    "PM10",
+    "Temperature Celsius",
+    "Humidity Percent",
+    "Date and Time"
+  ];
+
+  const rows = sortedReadings().map((reading) => [
+    reading.id,
+    reading.sensorId,
+    reading.location,
+    reading.aqi,
+    reading.pm25,
+    reading.pm10,
+    reading.temperature,
+    reading.humidity,
+    reading.date
+  ]);
+
+  const csvCell = (value) => {
+    const text = String(value ?? "");
+    return '"' + text.replace(/"/g, '""') + '"';
+  };
+
+  const csv = [headers, ...rows]
+    .map((row) => row.map(csvCell).join(","))
+    .join("\r\n");
+
+  const blob = new Blob(["\uFEFF" + csv], {
+    type: "text/csv;charset=utf-8;"
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = "airwatch_sensor_readings.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  URL.revokeObjectURL(url);
+}
+
+$("exportCsvBtn").addEventListener("click", exportCsv);
+$("historyExportBtn").addEventListener("click", exportCsv);
+
+// ---------- REFRESH ALL DASHBOARD CONTENT ----------
+
+function renderAll() {
+  renderOverview();
+  renderReadingsTable();
+  renderHistory();
+  renderSensors();
+  drawCharts();
+}
