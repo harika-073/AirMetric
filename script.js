@@ -1,6 +1,6 @@
 // ========================================
 // AIRWATCH - SMART AIR QUALITY MONITORING
-// Frontend demo using browser localStorage
+// Demo frontend using browser localStorage
 // ========================================
 
 const DEMO_EMAIL = "demo@airwatch.com";
@@ -13,14 +13,20 @@ const $ = (id) => document.getElementById(id);
 
 let readings = loadReadings();
 
+const sectionNames = {
+  overview: "Dashboard Overview",
+  readings: "Sensor Readings",
+  history: "Historical Analysis",
+  sensors: "Sensors"
+};
+
 // ---------- STORAGE ----------
 
 function loadReadings() {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
-  } catch (error) {
-    console.error("Unable to load readings:", error);
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    return Array.isArray(data) ? data : [];
+  } catch {
     return [];
   }
 }
@@ -29,7 +35,12 @@ function saveReadings() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(readings));
 }
 
-// ---------- LOGIN AND LOGOUT ----------
+function createId() {
+  return Date.now().toString(36) +
+    Math.random().toString(36).slice(2, 9);
+}
+
+// ---------- LOGIN ----------
 
 $("fillDemo").addEventListener("click", () => {
   $("email").value = DEMO_EMAIL;
@@ -49,16 +60,8 @@ $("loginForm").addEventListener("submit", (event) => {
     showDashboard();
   } else {
     $("loginError").textContent =
-      "Invalid demo credentials. Use the demo login details shown below.";
+      "Invalid email or password. Please try again.";
   }
-});
-
-$("logoutBtn").addEventListener("click", () => {
-  sessionStorage.removeItem(SESSION_KEY);
-  $("dashboardPage").classList.add("hidden");
-  $("loginPage").classList.remove("hidden");
-  $("password").value = "";
-  $("loginError").textContent = "";
 });
 
 function showDashboard() {
@@ -69,24 +72,24 @@ function showDashboard() {
   showSection("overview");
 }
 
-// Restore the demo session for this browser tab.
+$("logoutBtn").addEventListener("click", () => {
+  sessionStorage.removeItem(SESSION_KEY);
+
+  $("dashboardPage").classList.add("hidden");
+  $("loginPage").classList.remove("hidden");
+  $("password").value = "";
+  $("loginError").textContent = "";
+});
+
+// Restore the demo session on page refresh in this tab.
 if (sessionStorage.getItem(SESSION_KEY) === "true") {
   showDashboard();
 }
 
 // ---------- NAVIGATION ----------
 
-const sectionNames = {
-  overview: "Dashboard Overview",
-  readings: "Sensor Readings",
-  history: "Historical Analysis",
-  sensors: "Sensors"
-};
-
 function showSection(name) {
-  const validSections = ["overview", "readings", "history", "sensors"];
-
-  if (!validSections.includes(name)) return;
+  if (!Object.prototype.hasOwnProperty.call(sectionNames, name)) return;
 
   document.querySelectorAll(".content-section").forEach((section) => {
     section.classList.add("hidden");
@@ -121,25 +124,7 @@ $("addReadingShortcut").addEventListener("click", () => {
   $("sensorId").focus();
 });
 
-// ---------- AQI CLASSIFICATION ----------
-
-function getAqiStatus(aqi) {
-  if (aqi <= 50) return { label: "Good", className: "good" };
-  if (aqi <= 100) return { label: "Moderate", className: "moderate" };
-  if (aqi <= 200) return { label: "Poor", className: "poor" };
-  if (aqi <= 300) return { label: "Very Poor", className: "poor" };
-  return { label: "Severe", className: "poor" };
-}
-
-function statusBadge(aqi) {
-  const status = getAqiStatus(Number(aqi));
-
-  return `<span class="aqi-badge ${status.className}">
-    ${escapeHTML(status.label)}
-  </span>`;
-}
-
-// ---------- SAFE HTML DISPLAY ----------
+// ---------- UTILITIES ----------
 
 function escapeHTML(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => {
@@ -175,7 +160,23 @@ function sortedReadings() {
   );
 }
 
-// ---------- ADD A SENSOR READING ----------
+function getAqiStatus(aqi) {
+  if (aqi <= 50) return { label: "Good", className: "good" };
+  if (aqi <= 100) return { label: "Moderate", className: "moderate" };
+  if (aqi <= 200) return { label: "Poor", className: "poor" };
+  if (aqi <= 300) return { label: "Very Poor", className: "poor" };
+  return { label: "Severe", className: "poor" };
+}
+
+function statusBadge(aqi) {
+  const status = getAqiStatus(Number(aqi));
+
+  return `<span class="aqi-badge ${status.className}">
+    ${escapeHTML(status.label)}
+  </span>`;
+}
+
+// ---------- ADD READING ----------
 
 function setDefaultDate() {
   const now = new Date();
@@ -196,29 +197,32 @@ $("readingForm").addEventListener("submit", (event) => {
   const humidity = Number($("humidity").value);
   const date = new Date($("readingDate").value);
 
+  const sensorId = $("sensorId").value.trim();
+  const location = $("location").value.trim();
+
+  if (!sensorId || !location) {
+    $("readingMessage").textContent =
+      "Sensor ID and location are required.";
+    return;
+  }
+
   if (
-    !Number.isFinite(aqi) ||
-    aqi < 0 ||
-    aqi > 500 ||
-    !Number.isFinite(pm25) ||
-    pm25 < 0 ||
-    !Number.isFinite(pm10) ||
-    pm10 < 0 ||
+    !Number.isFinite(aqi) || aqi < 0 || aqi > 500 ||
+    !Number.isFinite(pm25) || pm25 < 0 ||
+    !Number.isFinite(pm10) || pm10 < 0 ||
     !Number.isFinite(temperature) ||
-    !Number.isFinite(humidity) ||
-    humidity < 0 ||
-    humidity > 100 ||
+    !Number.isFinite(humidity) || humidity < 0 || humidity > 100 ||
     Number.isNaN(date.getTime())
   ) {
     $("readingMessage").textContent =
-      "Please check the values and enter valid sensor data.";
+      "Please enter valid values for all fields.";
     return;
   }
 
   const reading = {
     id: createId(),
-    sensorId: $("sensorId").value.trim(),
-    location: $("location").value.trim(),
+    sensorId,
+    location,
     aqi,
     pm25,
     pm10,
@@ -227,12 +231,6 @@ $("readingForm").addEventListener("submit", (event) => {
     date: date.toISOString()
   };
 
-  if (!reading.sensorId || !reading.location) {
-    $("readingMessage").textContent =
-      "Sensor ID and location are required.";
-    return;
-  }
-
   readings.push(reading);
 
   try {
@@ -240,7 +238,7 @@ $("readingForm").addEventListener("submit", (event) => {
   } catch (error) {
     readings.pop();
     $("readingMessage").textContent =
-      "Unable to save data in this browser. Check browser storage settings.";
+      "Could not save the reading. Check browser storage.";
     return;
   }
 
@@ -250,39 +248,29 @@ $("readingForm").addEventListener("submit", (event) => {
   $("readingMessage").textContent = "Reading saved successfully!";
   renderAll();
 
-  // Clear the success message after the next user action.
   window.setTimeout(() => {
-    if ($("readingMessage")) {
-      $("readingMessage").textContent = "";
-    }
+    $("readingMessage").textContent = "";
   }, 4000);
 });
 
-function createId() {
-  return Date.now().toString(36) +
-    Math.random().toString(36).slice(2, 9);
-}
-
-// ---------- READINGS TABLE / SEARCH ----------
+// ---------- SEARCH AND READINGS TABLE ----------
 
 $("searchReadings").addEventListener("input", renderReadingsTable);
 
 function renderReadingsTable() {
   const query = $("searchReadings").value.trim().toLowerCase();
 
-  const filtered = sortedReadings().filter((reading) => {
-    return (
-      String(reading.sensorId).toLowerCase().includes(query) ||
-      String(reading.location).toLowerCase().includes(query)
-    );
-  });
+  const filtered = sortedReadings().filter((reading) =>
+    String(reading.sensorId).toLowerCase().includes(query) ||
+    String(reading.location).toLowerCase().includes(query)
+  );
 
   $("readingsTableBody").innerHTML = filtered.map((reading) => `
     <tr>
       <td>${escapeHTML(formatDate(reading.date))}</td>
       <td>${escapeHTML(reading.sensorId)}</td>
       <td>${escapeHTML(reading.location)}</td>
-      <td><strong>${Number(reading.aqi)}</strong> ${statusBadge(reading.aqi)}</td>
+      <td>${Number(reading.aqi)} ${statusBadge(reading.aqi)}</td>
       <td>${Number(reading.pm25).toFixed(1)}</td>
       <td>${Number(reading.pm10).toFixed(1)}</td>
       <td>${Number(reading.temperature).toFixed(1)}°C</td>
@@ -307,18 +295,25 @@ $("readingsTableBody").addEventListener("click", (event) => {
 
   if (!reading) return;
 
-  const confirmed = window.confirm(
-    `Delete the reading from ${reading.location}?`
-  );
+  if (!window.confirm(`Delete the reading from ${reading.location}?`)) {
+    return;
+  }
 
-  if (!confirmed) return;
-
+  const previousReadings = readings;
   readings = readings.filter((item) => item.id !== id);
-  saveReadings();
+
+  try {
+    saveReadings();
+  } catch {
+    readings = previousReadings;
+    alert("Could not delete the record. Please try again.");
+    return;
+  }
+
   renderAll();
 });
 
-// ---------- DASHBOARD SUMMARY ----------
+// ---------- OVERVIEW ----------
 
 function renderOverview() {
   const recent = sortedReadings();
@@ -380,26 +375,23 @@ function renderHistory() {
   $("lowestAqi").textContent = lowest;
   $("historyEmpty").classList.add("hidden");
 
-  const overallStatus = getAqiStatus(average).label;
-
   $("historySummary").textContent =
-    `There are ${readings.length} stored readings. ` +
-    `The average AQI is ${average.toFixed(1)}, classified as ${overallStatus}. ` +
-    `The highest recorded AQI is ${highest}, and the lowest is ${lowest}. ` +
-    `These results describe only the records entered in this demo.`;
+    `There are ${readings.length} saved readings. ` +
+    `The average AQI is ${average.toFixed(1)}, classified as ` +
+    `${getAqiStatus(average).label}. The highest recorded AQI is ${highest}, ` +
+    `and the lowest is ${lowest}. This summary uses only the data entered ` +
+    `into this demo.`;
 }
 
-// ---------- SENSOR LIST ----------
+// ---------- SENSORS ----------
 
 function renderSensors() {
   const sensorMap = new Map();
 
   readings.forEach((reading) => {
-    const id = reading.sensorId;
-
-    if (!sensorMap.has(id)) {
-      sensorMap.set(id, {
-        sensorId: id,
+    if (!sensorMap.has(reading.sensorId)) {
+      sensorMap.set(reading.sensorId, {
+        sensorId: reading.sensorId,
         location: reading.location,
         count: 0,
         latestDate: reading.date,
@@ -407,7 +399,7 @@ function renderSensors() {
       });
     }
 
-    const sensor = sensorMap.get(id);
+    const sensor = sensorMap.get(reading.sensorId);
     sensor.count++;
 
     if (new Date(reading.date) > new Date(sensor.latestDate)) {
@@ -434,7 +426,7 @@ function renderSensors() {
   $("sensorsEmpty").classList.toggle("hidden", sensors.length > 0);
 }
 
-// ---------- DRAW AQI CHARTS ----------
+// ---------- AQI CHARTS ----------
 
 function drawCharts() {
   drawAqiChart("aqiChart");
@@ -445,8 +437,9 @@ function drawAqiChart(canvasId) {
   const canvas = $(canvasId);
   if (!canvas) return;
 
-  const emptyElement =
-    canvasId === "aqiChart" ? $("chartEmpty") : $("historyEmpty");
+  const emptyElement = canvasId === "aqiChart"
+    ? $("chartEmpty")
+    : $("historyEmpty");
 
   const context = canvas.getContext("2d");
   const width = Math.max(canvas.clientWidth, 280);
@@ -480,7 +473,6 @@ function drawAqiChart(canvasId) {
     Math.ceil(Math.max(...records.map((item) => Number(item.aqi))) / 50) * 50
   );
 
-  // Horizontal grid lines and labels.
   context.font = "10px Inter, Arial";
   context.textAlign = "right";
   context.textBaseline = "middle";
@@ -500,31 +492,29 @@ function drawAqiChart(canvasId) {
     context.fillText(String(Math.round(value)), padding.left - 8, y);
   }
 
-  const points = records.map((record, index) => {
-    const x = records.length === 1
+  const points = records.map((record, index) => ({
+    x: records.length === 1
       ? padding.left + plotWidth / 2
-      : padding.left + (index / (records.length - 1)) * plotWidth;
+      : padding.left + (index / (records.length - 1)) * plotWidth,
+    y: padding.top + plotHeight -
+      (Number(record.aqi) / maxValue) * plotHeight,
+    record
+  }));
 
-    const y = padding.top + plotHeight -
-      (Number(record.aqi) / maxValue) * plotHeight;
-
-    return { x, y, record };
-  });
-
-  // Area under the line.
   context.beginPath();
   context.moveTo(points[0].x, padding.top + plotHeight);
 
-  points.forEach((point) => {
-    context.lineTo(point.x, point.y);
-  });
+  points.forEach((point) => context.lineTo(point.x, point.y));
 
-  context.lineTo(points[points.length - 1].x, padding.top + plotHeight);
+  context.lineTo(
+    points[points.length - 1].x,
+    padding.top + plotHeight
+  );
+
   context.closePath();
   context.fillStyle = "rgba(21, 150, 106, 0.10)";
   context.fill();
 
-  // AQI line.
   context.beginPath();
 
   points.forEach((point, index) => {
@@ -540,7 +530,6 @@ function drawAqiChart(canvasId) {
   context.lineJoin = "round";
   context.stroke();
 
-  // Points and date labels.
   points.forEach((point, index) => {
     context.beginPath();
     context.arc(point.x, point.y, 4, 0, Math.PI * 2);
@@ -584,7 +573,7 @@ window.addEventListener("resize", () => {
 
 function exportCsv() {
   if (!readings.length) {
-    window.alert("There are no readings to export yet.");
+    alert("There are no readings to export yet.");
     return;
   }
 
@@ -612,10 +601,8 @@ function exportCsv() {
     reading.date
   ]);
 
-  const csvCell = (value) => {
-    const text = String(value ?? "");
-    return '"' + text.replace(/"/g, '""') + '"';
-  };
+  const csvCell = (value) =>
+    '"' + String(value ?? "").replace(/"/g, '""') + '"';
 
   const csv = [headers, ...rows]
     .map((row) => row.map(csvCell).join(","))
@@ -640,7 +627,7 @@ function exportCsv() {
 $("exportCsvBtn").addEventListener("click", exportCsv);
 $("historyExportBtn").addEventListener("click", exportCsv);
 
-// ---------- REFRESH ALL DASHBOARD CONTENT ----------
+// ---------- RENDER EVERYTHING ----------
 
 function renderAll() {
   renderOverview();
