@@ -2,59 +2,51 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#15966a">
-  <title>AirWatch | Air Quality Monitoring</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AirWatch | Smart Air Quality Monitoring</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- LOGIN PAGE -->
+  <!-- LOGIN -->
   <section id="loginPage" class="login-page">
     <div class="login-card">
       <div class="logo">🌿 AirWatch</div>
-      <p class="subtitle">Smart Air Quality Monitoring System</p>
-
-      <h1>Welcome Back</h1>
-      <p class="muted">Login to access your dashboard.</p>
+      <p class="muted">Smart Air Quality Monitoring System</p>
+      <h1 id="authTitle">Welcome Back</h1>
+      <p id="authDescription" class="muted">Login to open your dashboard.</p>
 
       <form id="loginForm">
-        <label for="email">Email address</label>
-        <input
-          id="email"
-          type="email"
-          placeholder="Enter your email"
-          autocomplete="username"
-          required
-        >
+        <label for="authRole">Login as</label>
+        <select id="authRole">
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+        </select>
+
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="Enter your email" required>
 
         <label for="password">Password</label>
-        <input
-          id="password"
-          type="password"
-          placeholder="Enter your password"
-          autocomplete="current-password"
-          required
-        >
+        <input id="password" type="password" placeholder="Enter your password" required>
 
         <p id="loginError" class="error" role="alert"></p>
-        <button type="submit" class="primary-btn">Login to Dashboard</button>
+        <button class="primary-btn" type="submit">Login</button>
       </form>
 
+      <button id="toggleSignup" class="text-btn" type="button">
+        New user? Create an account
+      </button>
+
       <div class="demo-info">
-        <strong>Demo Login Credentials</strong>
-        <p>Email: demo@airwatch.com</p>
-        <p>Password: AirWatch123</p>
-        <button type="button" id="fillDemo" class="text-btn">
-          Fill demo credentials
-        </button>
+        <strong>Admin demo login</strong>
+        <p>Email: admin@airwatch.com</p>
+        <p>Password: Admin@123</p>
       </div>
     </div>
   </section>
 
-  <!-- DASHBOARD -->
+  <!-- APPLICATION -->
   <section id="dashboardPage" class="dashboard-page hidden">
-
     <aside class="sidebar">
       <div class="logo">🌿 AirWatch</div>
       <p class="sidebar-label">MAIN MENU</p>
@@ -65,8 +57,8 @@
       <button class="nav-btn" data-section="sensors">⌖ Sensors</button>
 
       <div class="sidebar-bottom">
-        <p class="muted">AirWatch Demo</p>
-        <button id="logoutBtn" class="logout-btn">↪ Logout</button>
+        <p id="currentUser" class="muted">User</p>
+        <button id="logoutBtn" class="logout-btn">Logout</button>
       </div>
     </aside>
 
@@ -76,10 +68,7 @@
           <p class="eyebrow">SMART AIR QUALITY MONITORING</p>
           <h1 id="pageTitle">Dashboard Overview</h1>
         </div>
-        <div class="user-chip">
-          <span class="status-dot"></span>
-          Demo User
-        </div>
+        <span id="roleBadge" class="role-badge">USER</span>
       </header>
 
       <!-- OVERVIEW -->
@@ -87,249 +76,195 @@
         <div class="welcome-row">
           <div>
             <h2>Air Quality Overview</h2>
-            <p class="muted">Monitor readings and explore air quality trends.</p>
+            <p class="muted">Live dashboard view of the records entered into this demo.</p>
           </div>
-          <button class="primary-btn" id="addReadingShortcut">+ Add Reading</button>
+          <button class="primary-btn" data-go="readings">+ Add Reading</button>
         </div>
 
         <div class="stats-grid">
           <article class="stat-card">
             <p>Latest AQI</p>
-            <div class="stat-line">
-              <strong id="latestAqi">--</strong>
-              <span id="aqiStatus" class="status-badge">No data</span>
-            </div>
-            <small>Air Quality Index</small>
+            <strong id="latestAqi">--</strong>
+            <span id="aqiStatus" class="status-badge">No data</span>
           </article>
-
           <article class="stat-card">
-            <p>PM2.5</p>
-            <div class="stat-line">
-              <strong id="latestPm25">--</strong>
-              <span class="unit">µg/m³</span>
-            </div>
-            <small>Fine particulate matter</small>
+            <p>Latest PM2.5</p>
+            <strong id="latestPm25">--</strong>
+            <small>µg/m³</small>
           </article>
-
           <article class="stat-card">
-            <p>PM10</p>
-            <div class="stat-line">
-              <strong id="latestPm10">--</strong>
-              <span class="unit">µg/m³</span>
-            </div>
-            <small>Coarse particulate matter</small>
+            <p>Latest PM10</p>
+            <strong id="latestPm10">--</strong>
+            <small>µg/m³</small>
           </article>
-
           <article class="stat-card">
             <p>Total Readings</p>
-            <div class="stat-line">
-              <strong id="totalReadings">0</strong>
-            </div>
-            <small>Saved sensor records</small>
+            <strong id="totalReadings">0</strong>
+            <small>Saved records</small>
           </article>
         </div>
 
         <div class="panel">
           <div class="panel-heading">
             <div>
-              <h2>Historical AQI Trend</h2>
-              <p class="muted">AQI values from your saved readings</p>
+              <h3>AQI Trend</h3>
+              <p class="muted">Based on saved sensor readings</p>
             </div>
-            <button id="exportCsvBtn" class="secondary-btn">Export CSV</button>
+            <button class="secondary-btn" data-go="history">Open History</button>
           </div>
-          <canvas id="aqiChart" height="110"></canvas>
-          <p id="chartEmpty" class="empty-message">
-            Add sensor readings to display the AQI trend.
-          </p>
+          <canvas id="aqiChart" height="220"></canvas>
+          <p id="chartEmpty" class="empty-message">Add readings to display the chart.</p>
         </div>
 
         <div class="panel">
-          <div class="panel-heading">
-            <div>
-              <h2>Recent Sensor Readings</h2>
-              <p class="muted">Your latest saved records</p>
-            </div>
-            <button class="secondary-btn" data-go="readings">View All</button>
-          </div>
-
+          <h3>Recent Readings</h3>
           <div class="table-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>Date & Time</th>
-                  <th>Location</th>
-                  <th>AQI</th>
-                  <th>PM2.5</th>
-                  <th>PM10</th>
-                  <th>Status</th>
-                </tr>
+                <tr><th>Date</th><th>Sensor</th><th>Location</th><th>AQI</th><th>Status</th></tr>
               </thead>
               <tbody id="recentTableBody"></tbody>
             </table>
           </div>
-          <p id="recentEmpty" class="empty-message">
-            No readings yet. Add your first sensor reading.
-          </p>
+          <p id="recentEmpty" class="empty-message">No readings have been added.</p>
         </div>
       </section>
 
-      <!-- SENSOR READINGS -->
+      <!-- READINGS PAGE -->
       <section id="readingsSection" class="content-section hidden">
         <div class="section-intro">
           <h2>Sensor Readings</h2>
-          <p class="muted">Add, search, review, and delete air quality records.</p>
+          <p class="muted">Add, search and delete air quality records.</p>
         </div>
 
         <div class="panel">
           <h3>Add New Reading</h3>
-
           <form id="readingForm" class="reading-form">
-            <div>
-              <label for="sensorId">Sensor ID</label>
-              <input id="sensorId" placeholder="e.g. SENSOR-01" required>
-            </div>
-
-            <div>
-              <label for="location">Location</label>
-              <input id="location" placeholder="e.g. College Campus" required>
-            </div>
-
-            <div>
-              <label for="aqi">AQI (0–500)</label>
-              <input id="aqi" type="number" min="0" max="500" required>
-            </div>
-
-            <div>
-              <label for="pm25">PM2.5 (µg/m³)</label>
-              <input id="pm25" type="number" min="0" step="0.1" required>
-            </div>
-
-            <div>
-              <label for="pm10">PM10 (µg/m³)</label>
-              <input id="pm10" type="number" min="0" step="0.1" required>
-            </div>
-
-            <div>
-              <label for="temperature">Temperature (°C)</label>
-              <input id="temperature" type="number" step="0.1" required>
-            </div>
-
-            <div>
-              <label for="humidity">Humidity (%)</label>
-              <input id="humidity" type="number" min="0" max="100" required>
-            </div>
-
-            <div>
-              <label for="readingDate">Reading Date & Time</label>
-              <input id="readingDate" type="datetime-local" required>
-            </div>
-
-            <div class="form-action">
-              <button type="submit" class="primary-btn">Save Reading</button>
-            </div>
+            <div><label for="sensorId">Sensor ID</label><input id="sensorId" placeholder="SENSOR-01" required></div>
+            <div><label for="location">Location</label><input id="location" placeholder="College Campus" required></div>
+            <div><label for="aqi">AQI (0–500)</label><input id="aqi" type="number" min="0" max="500" required></div>
+            <div><label for="pm25">PM2.5 (µg/m³)</label><input id="pm25" type="number" min="0" step="0.1" required></div>
+            <div><label for="pm10">PM10 (µg/m³)</label><input id="pm10" type="number" min="0" step="0.1" required></div>
+            <div><label for="temperature">Temperature (°C)</label><input id="temperature" type="number" step="0.1" required></div>
+            <div><label for="humidity">Humidity (%)</label><input id="humidity" type="number" min="0" max="100" required></div>
+            <div><label for="readingDate">Date and time</label><input id="readingDate" type="datetime-local" required></div>
+            <div class="form-action"><button class="primary-btn" type="submit">Save Reading</button></div>
           </form>
-
           <p id="readingMessage" class="success-message" role="status"></p>
         </div>
 
         <div class="panel">
           <div class="panel-heading">
-            <div>
-              <h3>All Readings</h3>
-              <p class="muted">Search records by sensor ID or location.</p>
-            </div>
-            <input id="searchReadings" class="search-input" placeholder="Search readings...">
+            <h3>All Readings</h3>
+            <input id="searchReadings" class="search-input" placeholder="Search sensor or location">
           </div>
-
           <div class="table-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>Date & Time</th>
-                  <th>Sensor ID</th>
-                  <th>Location</th>
-                  <th>AQI</th>
-                  <th>PM2.5</th>
-                  <th>PM10</th>
-                  <th>Temp.</th>
-                  <th>Humidity</th>
-                  <th>Action</th>
-                </tr>
+                <tr><th>Date</th><th>Sensor</th><th>Location</th><th>AQI</th><th>PM2.5</th><th>PM10</th><th>Temp.</th><th>Humidity</th><th>Action</th></tr>
               </thead>
               <tbody id="readingsTableBody"></tbody>
             </table>
           </div>
-
-          <p id="readingsEmpty" class="empty-message">No matching readings found.</p>
+          <p id="readingsEmpty" class="empty-message">No matching readings.</p>
         </div>
       </section>
 
-      <!-- HISTORICAL ANALYSIS -->
+      <!-- HISTORY PAGE: ADD READINGS HERE TOO -->
       <section id="historySection" class="content-section hidden">
         <div class="section-intro">
           <h2>Historical Analysis</h2>
-          <p class="muted">Compare saved records and review air quality trends.</p>
+          <p class="muted">Add a new historical reading or analyse existing records.</p>
+        </div>
+
+        <div class="panel">
+          <h3>Add Historical Reading</h3>
+          <form id="historyReadingForm" class="reading-form">
+            <div><label for="historySensorId">Sensor ID</label><input id="historySensorId" required placeholder="SENSOR-01"></div>
+            <div><label for="historyLocation">Location</label><input id="historyLocation" required placeholder="College Campus"></div>
+            <div><label for="historyAqi">AQI (0–500)</label><input id="historyAqi" type="number" min="0" max="500" required></div>
+            <div><label for="historyPm25">PM2.5 (µg/m³)</label><input id="historyPm25" type="number" min="0" step="0.1" required></div>
+            <div><label for="historyPm10">PM10 (µg/m³)</label><input id="historyPm10" type="number" min="0" step="0.1" required></div>
+            <div><label for="historyTemperature">Temperature (°C)</label><input id="historyTemperature" type="number" step="0.1" required></div>
+            <div><label for="historyHumidity">Humidity (%)</label><input id="historyHumidity" type="number" min="0" max="100" required></div>
+            <div><label for="historyDate">Historical date and time</label><input id="historyDate" type="datetime-local" required></div>
+            <div class="form-action"><button class="primary-btn" type="submit">Add to History</button></div>
+          </form>
+          <p id="historyMessage" class="success-message" role="status"></p>
         </div>
 
         <div class="stats-grid history-stats">
-          <article class="stat-card">
-            <p>Average AQI</p>
-            <div class="stat-line"><strong id="averageAqi">--</strong></div>
-            <small>Across saved records</small>
-          </article>
-
-          <article class="stat-card">
-            <p>Highest AQI</p>
-            <div class="stat-line"><strong id="highestAqi">--</strong></div>
-            <small>Highest recorded value</small>
-          </article>
-
-          <article class="stat-card">
-            <p>Lowest AQI</p>
-            <div class="stat-line"><strong id="lowestAqi">--</strong></div>
-            <small>Lowest recorded value</small>
-          </article>
-        </div>
-
-        <div class="panel">
-          <h3>AQI History</h3>
-          <canvas id="historyChart" height="130"></canvas>
-          <p id="historyEmpty" class="empty-message">
-            Add readings to begin historical analysis.
-          </p>
+          <article class="stat-card"><p>Average AQI</p><strong id="averageAqi">--</strong></article>
+          <article class="stat-card"><p>Highest AQI</p><strong id="highestAqi">--</strong></article>
+          <article class="stat-card"><p>Lowest AQI</p><strong id="lowestAqi">--</strong></article>
         </div>
 
         <div class="panel">
           <div class="panel-heading">
-            <h3>Air Quality Summary</h3>
-            <button id="historyExportBtn" class="secondary-btn">Download CSV</button>
+            <h3>Historical AQI Chart</h3>
+            <button id="historyExportBtn" class="secondary-btn">Export CSV</button>
           </div>
-          <p id="historySummary" class="summary-text">No data is available yet.</p>
+          <canvas id="historyChart" height="240"></canvas>
+          <p id="historyEmpty" class="empty-message">No historical readings available.</p>
+        </div>
+
+        <div class="panel">
+          <h3>Historical Records</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Sensor</th><th>Location</th><th>AQI</th><th>Status</th></tr></thead>
+              <tbody id="historyTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Analysis Summary</h3>
+          <p id="historySummary" class="summary-text">No data available yet.</p>
         </div>
       </section>
 
-      <!-- SENSORS -->
+      <!-- SENSORS PAGE: ADD SENSOR AND READINGS HERE TOO -->
       <section id="sensorsSection" class="content-section hidden">
         <div class="section-intro">
           <h2>Sensors</h2>
-          <p class="muted">Review sensors identified from your saved readings.</p>
+          <p class="muted">Register sensors and add readings directly from this page.</p>
         </div>
 
         <div class="panel">
-          <div class="panel-heading">
-            <h3>Registered Sensors</h3>
-            <span class="muted">Generated from sensor records</span>
-          </div>
+          <h3>Register New Sensor</h3>
+          <form id="sensorForm" class="reading-form">
+            <div><label for="newSensorId">Sensor ID</label><input id="newSensorId" required placeholder="SENSOR-02"></div>
+            <div><label for="newSensorLocation">Sensor Location</label><input id="newSensorLocation" required placeholder="Library Block"></div>
+            <div class="form-action"><button class="primary-btn" type="submit">Register Sensor</button></div>
+          </form>
+          <p id="sensorMessage" class="success-message" role="status"></p>
+        </div>
+
+        <div class="panel">
+          <h3>Add Reading from Sensors</h3>
+          <form id="sensorReadingForm" class="reading-form">
+            <div><label for="sensorReadingId">Sensor ID</label><input id="sensorReadingId" required placeholder="SENSOR-01"></div>
+            <div><label for="sensorReadingLocation">Location</label><input id="sensorReadingLocation" required placeholder="College Campus"></div>
+            <div><label for="sensorReadingAqi">AQI (0–500)</label><input id="sensorReadingAqi" type="number" min="0" max="500" required></div>
+            <div><label for="sensorReadingPm25">PM2.5 (µg/m³)</label><input id="sensorReadingPm25" type="number" min="0" step="0.1" required></div>
+            <div><label for="sensorReadingPm10">PM10 (µg/m³)</label><input id="sensorReadingPm10" type="number" min="0" step="0.1" required></div>
+            <div><label for="sensorReadingTemp">Temperature (°C)</label><input id="sensorReadingTemp" type="number" step="0.1" required></div>
+            <div><label for="sensorReadingHumidity">Humidity (%)</label><input id="sensorReadingHumidity" type="number" min="0" max="100" required></div>
+            <div><label for="sensorReadingDate">Date and time</label><input id="sensorReadingDate" type="datetime-local" required></div>
+            <div class="form-action"><button class="primary-btn" type="submit">Save Sensor Reading</button></div>
+          </form>
+          <p id="sensorReadingMessage" class="success-message" role="status"></p>
+        </div>
+
+        <div class="panel">
+          <h3>Registered Sensors</h3>
           <div id="sensorCards" class="sensor-grid"></div>
-          <p id="sensorsEmpty" class="empty-message">
-            No sensors found. Add a reading with a sensor ID.
-          </p>
+          <p id="sensorsEmpty" class="empty-message">No sensors registered yet.</p>
         </div>
       </section>
 
-      <footer>
-        AirWatch Demo · Readings are stored in this browser.
-      </footer>
+      <footer>AirWatch Demo · Records are stored in this browser.</footer>
     </main>
   </section>
 
