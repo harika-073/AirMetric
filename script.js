@@ -1,24 +1,48 @@
-// ============================================
-// AIRWATCH - LOGIN, READINGS, HISTORY, SENSORS
-// Frontend demo: browser localStorage
-// ============================================
+
+/* ==========================================
+   AIRWATCH - COMPLETE SCRIPT
+   Login, Signup, Dashboard, Readings,
+   Historical Analysis, Sensors and CSV Export
+   Browser storage demo - no SQL connection
+========================================== */
+
+"use strict";
 
 const ADMIN_EMAIL = "admin@airwatch.com";
 const ADMIN_PASSWORD = "Admin@123";
 
-const USERS_KEY = "airwatch_registered_users_v2";
-const READINGS_KEY = "airwatch_readings_v2";
-const SENSORS_KEY = "airwatch_sensors_v2";
-const SESSION_KEY = "airwatch_session_v2";
+const KEYS = {
+  users: "airwatch_registered_users_v2",
+  readings: "airwatch_readings_v2",
+  sensors: "airwatch_sensors_v2",
+  session: "airwatch_session_v2"
+};
 
 const $ = (id) => document.getElementById(id);
 
-let users = loadArray(USERS_KEY);
-let readings = loadArray(READINGS_KEY);
-let sensors = loadArray(SENSORS_KEY);
+function readStorage(key, fallback = []) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key));
+    return value ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
 
-let signupMode = false;
+function writeStorage(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+let users = readStorage(KEYS.users);
+let readings = readStorage(KEYS.readings);
+let sensors = readStorage(KEYS.sensors);
+
+if (!Array.isArray(users)) users = [];
+if (!Array.isArray(readings)) readings = [];
+if (!Array.isArray(sensors)) sensors = [];
+
 let currentAccount = null;
+let signupMode = false;
 
 const sectionNames = {
   overview: "Dashboard Overview",
@@ -27,83 +51,81 @@ const sectionNames = {
   sensors: "Sensors"
 };
 
-function loadArray(key) {
-  try {
-    const result = JSON.parse(localStorage.getItem(key) || "[]");
-    return Array.isArray(result) ? result : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveArray(key, data) {
-  localStorage.setItem(key, JSON.stringify(data));
-}
-
-function createId() {
+function makeId() {
   return Date.now().toString(36) +
     Math.random().toString(36).slice(2, 9);
 }
 
 function escapeHTML(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
     '"': "&quot;",
     "'": "&#39;"
-  })[character]);
+  })[ch]);
 }
 
 function formatDate(value) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return "Unknown";
-
-  return date.toLocaleString([], {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "Unknown";
+  return d.toLocaleString();
 }
 
-function sortedReadings() {
-  return [...readings].sort(
-    (a, b) => new Date(b.date) - new Date(a.date)
-  );
+function setMessage(id, message) {
+  const element = $(id);
+  if (element) element.textContent = message;
 }
 
-// ============================================
-// LOGIN AND USER REGISTRATION
-// ============================================
+function setDefaultDate(id) {
+  const input = $(id);
+  if (!input) return;
 
-$("toggleSignup").addEventListener("click", () => {
-  signupMode = !signupMode;
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  input.value = now.toISOString().slice(0, 16);
+}
 
-  $("authTitle").textContent = signupMode
-    ? "Create Account"
-    : "Welcome Back";
+[
+  "readingDate",
+  "historyDate",
+  "sensorReadingDate"
+].forEach(setDefaultDate);
 
-  $("authDescription").textContent = signupMode
-    ? "Create a user account to access AirWatch."
-    : "Login to open your dashboard.";
+/* ==========================================
+   LOGIN AND SIGNUP
+========================================== */
 
-  $("loginForm").querySelector('button[type="submit"]').textContent =
-    signupMode ? "Create Account" : "Login";
+function setAuthMode(isSignup) {
+  signupMode = isSignup;
 
-  $("toggleSignup").textContent = signupMode
-    ? "Already registered? Login"
-    : "New user? Create an account";
+  $("authTitle").textContent =
+    isSignup ? "Create Account" : "Welcome Back";
+
+  $("authDescription").textContent =
+    isSignup
+      ? "Create a user account to access AirWatch."
+      : "Login to open your dashboard.";
+
+  $("loginForm").querySelector('[type="submit"]').textContent =
+    isSignup ? "Create Account" : "Login";
+
+  $("toggleSignup").textContent =
+    isSignup
+      ? "Already registered? Login"
+      : "New user? Create an account";
 
   $("authRole").value = "user";
-  $("authRole").disabled = signupMode;
+  $("authRole").disabled = isSignup;
   $("loginError").textContent = "";
+}
+
+$("toggleSignup").addEventListener("click", () => {
+  setAuthMode(!signupMode);
 });
 
 $("authRole").addEventListener("change", () => {
-  $("loginError").textContent = "";
+  setMessage("loginError", "");
 });
 
 $("loginForm").addEventListener("submit", (event) => {
@@ -113,165 +135,167 @@ $("loginForm").addEventListener("submit", (event) => {
   const password = $("password").value;
   const role = $("authRole").value;
 
-  $("loginError").textContent = "";
+  setMessage("loginError", "");
 
-  // Admin has fixed demo credentials.
-  if (role === "admin") {
-    if (signupMode) {
-      $("loginError").textContent =
-        "Admin accounts cannot be registered here.";
-      return;
-    }
-
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      currentAccount = {
-        email: ADMIN_EMAIL,
-        role: "admin"
-      };
-
-      openDashboard();
-    } else {
-      $("loginError").textContent =
-        "Invalid admin email or password.";
-    }
-
+  if (!email || !password) {
+    setMessage("loginError", "Enter your email and password.");
     return;
   }
 
-  // User registration.
+  // Fixed admin demo account
+  if (role === "admin") {
+    if (signupMode) {
+      setMessage("loginError", "Admin signup is not available.");
+      return;
+    }
+
+    if (
+      email !== ADMIN_EMAIL ||
+      password !== ADMIN_PASSWORD
+    ) {
+      setMessage("loginError", "Invalid admin credentials.");
+      return;
+    }
+
+    loginSuccess({
+      email: ADMIN_EMAIL,
+      role: "admin"
+    });
+    return;
+  }
+
+  // New user signup
   if (signupMode) {
     if (password.length < 6) {
-      $("loginError").textContent =
-        "Please use a password with at least 6 characters.";
+      setMessage(
+        "loginError",
+        "Password must contain at least 6 characters."
+      );
       return;
     }
 
     if (email === ADMIN_EMAIL) {
-      $("loginError").textContent =
-        "This email is reserved for the admin account.";
+      setMessage("loginError", "This email is reserved.");
       return;
     }
 
-    if (users.some((user) => user.email === email)) {
-      $("loginError").textContent =
-        "An account with this email already exists. Please log in.";
+    if (users.some((u) => u.email === email)) {
+      setMessage(
+        "loginError",
+        "This account already exists. Please log in."
+      );
       return;
     }
 
     const newUser = {
-      id: createId(),
+      id: makeId(),
       email,
       password
     };
 
-    users.push(newUser);
-
     try {
-      saveArray(USERS_KEY, users);
-    } catch {
-      users.pop();
-      $("loginError").textContent =
-        "Could not save your account in this browser.";
+      users.push(newUser);
+      writeStorage(KEYS.users, users);
+    } catch (error) {
+      users = users.filter((u) => u.id !== newUser.id);
+      setMessage(
+        "loginError",
+        "Could not save account. Check browser storage."
+      );
       return;
     }
 
-    currentAccount = {
+    // Automatically open dashboard after signup
+    loginSuccess({
       email: newUser.email,
       role: "user"
-    };
-
-    openDashboard();
+    });
     return;
   }
 
-  // User login.
-  const matchedUser = users.find(
-    (user) => user.email === email && user.password === password
+  // Existing user login
+  const user = users.find(
+    (u) => u.email === email && u.password === password
   );
 
-  if (!matchedUser) {
-    $("loginError").textContent =
-      "Account not found or password is incorrect. Create an account first.";
+  if (!user) {
+    setMessage(
+      "loginError",
+      "Account not found or password is incorrect. Sign up first if new."
+    );
     return;
   }
 
-  currentAccount = {
-    email: matchedUser.email,
+  loginSuccess({
+    email: user.email,
     role: "user"
-  };
-
-  openDashboard();
+  });
 });
 
-function openDashboard() {
+function loginSuccess(account) {
+  currentAccount = account;
+
+  try {
+    // Persist session across page refreshes in this browser
+    localStorage.setItem(KEYS.session, JSON.stringify(account));
+  } catch (error) {
+    console.error("Could not save session:", error);
+  }
+
   $("loginPage").classList.add("hidden");
   $("dashboardPage").classList.remove("hidden");
 
-  $("currentUser").textContent = currentAccount.email;
-  $("roleBadge").textContent = currentAccount.role.toUpperCase();
+  $("currentUser").textContent = account.email;
+  $("roleBadge").textContent = account.role.toUpperCase();
 
-  try {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(currentAccount));
-  } catch {
-    // The dashboard can still run for this page session.
-  }
+  setAuthMode(false);
+  $("password").value = "";
 
   renderAll();
   showSection("overview");
 }
 
 function restoreSession() {
-  try {
-    const saved = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
+  const saved = readStorage(KEYS.session, null);
 
-    if (!saved || !saved.email || !saved.role) return;
+  if (!saved || !saved.email || !saved.role) return;
 
-    if (
-      saved.role === "admin" &&
-      saved.email === ADMIN_EMAIL
-    ) {
-      currentAccount = saved;
-      openDashboard();
-      return;
-    }
+  if (
+    saved.role === "admin" &&
+    saved.email === ADMIN_EMAIL
+  ) {
+    loginSuccess(saved);
+    return;
+  }
 
-    const userExists = users.some((user) =>
-      user.email === saved.email
-    );
+  const existingUser = users.some(
+    (u) => u.email === saved.email
+  );
 
-    if (saved.role === "user" && userExists) {
-      currentAccount = saved;
-      openDashboard();
-    }
-  } catch {
-    sessionStorage.removeItem(SESSION_KEY);
+  if (saved.role === "user" && existingUser) {
+    loginSuccess(saved);
+  } else {
+    localStorage.removeItem(KEYS.session);
   }
 }
 
 $("logoutBtn").addEventListener("click", () => {
-  sessionStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(KEYS.session);
   currentAccount = null;
 
   $("dashboardPage").classList.add("hidden");
   $("loginPage").classList.remove("hidden");
-  $("password").value = "";
-  $("loginError").textContent = "";
 
-  signupMode = false;
-  $("authTitle").textContent = "Welcome Back";
-  $("authDescription").textContent = "Login to open your dashboard.";
-  $("loginForm").querySelector('button[type="submit"]').textContent = "Login";
-  $("toggleSignup").textContent = "New user? Create an account";
-  $("authRole").disabled = false;
-  $("authRole").value = "user";
+  $("password").value = "";
+  setAuthMode(false);
 });
 
-// ============================================
-// NAVIGATION
-// ============================================
+/* ==========================================
+   NAVIGATION
+========================================== */
 
 function showSection(name) {
-  if (!Object.prototype.hasOwnProperty.call(sectionNames, name)) return;
+  if (!sectionNames[name]) return;
 
   document.querySelectorAll(".content-section").forEach((section) => {
     section.classList.add("hidden");
@@ -304,51 +328,39 @@ document.querySelectorAll("[data-go]").forEach((button) => {
   });
 });
 
-// ============================================
-// AQI CLASSIFICATION
-// ============================================
+/* ==========================================
+   AQI STATUS
+========================================== */
 
 function getAqiStatus(aqi) {
   if (aqi <= 50) return { label: "Good", className: "good" };
   if (aqi <= 100) return { label: "Moderate", className: "moderate" };
   if (aqi <= 200) return { label: "Poor", className: "poor" };
   if (aqi <= 300) return { label: "Very Poor", className: "poor" };
-
   return { label: "Severe", className: "poor" };
 }
 
 function statusBadge(aqi) {
   const status = getAqiStatus(Number(aqi));
-
   return `<span class="aqi-badge ${status.className}">
-    ${escapeHTML(status.label)}
+    ${status.label}
   </span>`;
 }
 
-// ============================================
-// DATE INPUTS
-// ============================================
-
-function setCurrentDate(inputId) {
-  const now = new Date();
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-
-  $(inputId).value = now.toISOString().slice(0, 16);
+function sortedReadings() {
+  return [...readings].sort(
+    (a, b) => new Date(b.date) - new Date(a.date)
+  );
 }
 
-[
-  "readingDate",
-  "historyDate",
-  "sensorReadingDate"
-].forEach(setCurrentDate);
-
-// ============================================
-// SHARED READING VALIDATION AND SAVING
-// ============================================
+/* ==========================================
+   ADD READINGS FROM ALL THREE PAGES
+========================================== */
 
 function saveNewReading(data, messageId, formId) {
   const sensorId = data.sensorId.trim();
   const location = data.location.trim();
+
   const aqi = Number(data.aqi);
   const pm25 = Number(data.pm25);
   const pm10 = Number(data.pm10);
@@ -356,11 +368,9 @@ function saveNewReading(data, messageId, formId) {
   const humidity = Number(data.humidity);
   const date = new Date(data.date);
 
-  const message = $(messageId);
-
   if (!sensorId || !location) {
-    message.textContent = "Sensor ID and location are required.";
-    return false;
+    setMessage(messageId, "Enter sensor ID and location.");
+    return;
   }
 
   if (
@@ -371,12 +381,12 @@ function saveNewReading(data, messageId, formId) {
     !Number.isFinite(humidity) || humidity < 0 || humidity > 100 ||
     Number.isNaN(date.getTime())
   ) {
-    message.textContent = "Please enter valid sensor values.";
-    return false;
+    setMessage(messageId, "Please enter valid sensor values.");
+    return;
   }
 
-  const reading = {
-    id: createId(),
+  const record = {
+    id: makeId(),
     sensorId,
     location,
     aqi,
@@ -387,17 +397,18 @@ function saveNewReading(data, messageId, formId) {
     date: date.toISOString()
   };
 
-  const previousReadings = readings;
-  const previousSensors = sensors;
+  const oldReadings = readings;
+  const oldSensors = sensors;
 
-  readings = [...readings, reading];
+  readings = [...readings, record];
 
-  // Add sensor automatically if it has not been registered.
-  if (!sensors.some((sensor) => sensor.sensorId === sensorId)) {
+  if (!sensors.some(
+    (s) => s.sensorId.toLowerCase() === sensorId.toLowerCase()
+  )) {
     sensors = [
       ...sensors,
       {
-        id: createId(),
+        id: makeId(),
         sensorId,
         location,
         createdAt: new Date().toISOString()
@@ -406,44 +417,24 @@ function saveNewReading(data, messageId, formId) {
   }
 
   try {
-    saveArray(READINGS_KEY, readings);
-    saveArray(SENSORS_KEY, sensors);
-  } catch {
-    readings = previousReadings;
-    sensors = previousSensors;
-
-    try {
-      saveArray(READINGS_KEY, readings);
-      saveArray(SENSORS_KEY, sensors);
-    } catch {
-      // Browser storage may be unavailable.
-    }
-
-    message.textContent =
-      "Could not save this reading. Check browser storage.";
-    return false;
+    writeStorage(KEYS.readings, readings);
+    writeStorage(KEYS.sensors, sensors);
+  } catch (error) {
+    readings = oldReadings;
+    sensors = oldSensors;
+    setMessage(messageId, "Could not save. Check browser storage.");
+    return;
   }
 
   $(formId).reset();
+  setDefaultDate(
+    $(formId).querySelector('input[type="datetime-local"]')?.id
+  );
 
-  const dateInput = $(formId).querySelector('input[type="datetime-local"]');
-  if (dateInput) {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    dateInput.value = now.toISOString().slice(0, 16);
-  }
-
-  message.textContent = "Reading added successfully!";
+  setMessage(messageId, "Reading saved successfully!");
   renderAll();
-
-  window.setTimeout(() => {
-    message.textContent = "";
-  }, 3500);
-
-  return true;
 }
 
-// Reading form on the Sensor Readings page.
 $("readingForm").addEventListener("submit", (event) => {
   event.preventDefault();
 
@@ -459,7 +450,6 @@ $("readingForm").addEventListener("submit", (event) => {
   }, "readingMessage", "readingForm");
 });
 
-// Reading form on the Historical Analysis page.
 $("historyReadingForm").addEventListener("submit", (event) => {
   event.preventDefault();
 
@@ -475,7 +465,6 @@ $("historyReadingForm").addEventListener("submit", (event) => {
   }, "historyMessage", "historyReadingForm");
 });
 
-// Reading form on the Sensors page.
 $("sensorReadingForm").addEventListener("submit", (event) => {
   event.preventDefault();
 
@@ -491,9 +480,9 @@ $("sensorReadingForm").addEventListener("submit", (event) => {
   }, "sensorReadingMessage", "sensorReadingForm");
 });
 
-// ============================================
-// REGISTER SENSOR
-// ============================================
+/* ==========================================
+   REGISTER SENSORS
+========================================== */
 
 $("sensorForm").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -502,78 +491,62 @@ $("sensorForm").addEventListener("submit", (event) => {
   const location = $("newSensorLocation").value.trim();
 
   if (!sensorId || !location) {
-    $("sensorMessage").textContent =
-      "Please enter the sensor ID and location.";
+    setMessage("sensorMessage", "Enter sensor ID and location.");
     return;
   }
 
-  if (sensors.some((sensor) =>
-    sensor.sensorId.toLowerCase() === sensorId.toLowerCase()
+  if (sensors.some(
+    (s) => s.sensorId.toLowerCase() === sensorId.toLowerCase()
   )) {
-    $("sensorMessage").textContent =
-      "A sensor with this ID already exists.";
+    setMessage("sensorMessage", "This sensor ID already exists.");
     return;
   }
 
-  const previousSensors = sensors;
-
-  sensors = [
-    ...sensors,
-    {
-      id: createId(),
-      sensorId,
-      location,
-      createdAt: new Date().toISOString()
-    }
-  ];
+  sensors.push({
+    id: makeId(),
+    sensorId,
+    location,
+    createdAt: new Date().toISOString()
+  });
 
   try {
-    saveArray(SENSORS_KEY, sensors);
-  } catch {
-    sensors = previousSensors;
-    $("sensorMessage").textContent =
-      "Could not save this sensor in browser storage.";
+    writeStorage(KEYS.sensors, sensors);
+  } catch (error) {
+    sensors.pop();
+    setMessage("sensorMessage", "Could not save this sensor.");
     return;
   }
 
   $("sensorForm").reset();
-  $("sensorMessage").textContent = "Sensor registered successfully!";
+  setMessage("sensorMessage", "Sensor registered successfully!");
   renderSensors();
-
-  window.setTimeout(() => {
-    $("sensorMessage").textContent = "";
-  }, 3500);
 });
 
-// ============================================
-// SEARCH AND DELETE READINGS
-// ============================================
+/* ==========================================
+   SEARCH AND DELETE READINGS
+========================================== */
 
 $("searchReadings").addEventListener("input", renderReadingsTable);
 
 function renderReadingsTable() {
   const query = $("searchReadings").value.trim().toLowerCase();
 
-  const filtered = sortedReadings().filter((reading) =>
-    String(reading.sensorId).toLowerCase().includes(query) ||
-    String(reading.location).toLowerCase().includes(query)
+  const filtered = sortedReadings().filter((r) =>
+    r.sensorId.toLowerCase().includes(query) ||
+    r.location.toLowerCase().includes(query)
   );
 
-  $("readingsTableBody").innerHTML = filtered.map((reading) => `
+  $("readingsTableBody").innerHTML = filtered.map((r) => `
     <tr>
-      <td>${escapeHTML(formatDate(reading.date))}</td>
-      <td>${escapeHTML(reading.sensorId)}</td>
-      <td>${escapeHTML(reading.location)}</td>
-      <td>${Number(reading.aqi)} ${statusBadge(reading.aqi)}</td>
-      <td>${Number(reading.pm25).toFixed(1)}</td>
-      <td>${Number(reading.pm10).toFixed(1)}</td>
-      <td>${Number(reading.temperature).toFixed(1)}°C</td>
-      <td>${Number(reading.humidity).toFixed(1)}%</td>
-      <td>
-        <button class="delete-btn" data-delete="${escapeHTML(reading.id)}">
-          Delete
-        </button>
-      </td>
+      <td>${escapeHTML(formatDate(r.date))}</td>
+      <td>${escapeHTML(r.sensorId)}</td>
+      <td>${escapeHTML(r.location)}</td>
+      <td>${r.aqi} ${statusBadge(r.aqi)}</td>
+      <td>${Number(r.pm25).toFixed(1)}</td>
+      <td>${Number(r.pm10).toFixed(1)}</td>
+      <td>${Number(r.temperature).toFixed(1)}°C</td>
+      <td>${Number(r.humidity).toFixed(1)}%</td>
+      <td><button class="delete-btn" data-delete="${escapeHTML(r.id)}">Delete</button></td>
     </tr>
   `).join("");
 
@@ -584,28 +557,26 @@ $("readingsTableBody").addEventListener("click", (event) => {
   const button = event.target.closest("[data-delete]");
   if (!button) return;
 
-  const reading = readings.find((item) => item.id === button.dataset.delete);
-  if (!reading) return;
-
-  if (!confirm(`Delete the reading from ${reading.location}?`)) return;
+  const record = readings.find((r) => r.id === button.dataset.delete);
+  if (!record || !confirm("Delete this reading?")) return;
 
   const previous = readings;
-  readings = readings.filter((item) => item.id !== reading.id);
+  readings = readings.filter((r) => r.id !== record.id);
 
   try {
-    saveArray(READINGS_KEY, readings);
-  } catch {
+    writeStorage(KEYS.readings, readings);
+  } catch (error) {
     readings = previous;
-    alert("Could not delete the record.");
+    alert("Could not delete this reading.");
     return;
   }
 
   renderAll();
 });
 
-// ============================================
-// OVERVIEW
-// ============================================
+/* ==========================================
+   OVERVIEW
+========================================== */
 
 function renderOverview() {
   const latest = sortedReadings()[0];
@@ -623,32 +594,32 @@ function renderOverview() {
     $("latestPm25").textContent = Number(latest.pm25).toFixed(1);
     $("latestPm10").textContent = Number(latest.pm10).toFixed(1);
 
-    const status = getAqiStatus(Number(latest.aqi));
+    const status = getAqiStatus(latest.aqi);
     $("aqiStatus").textContent = status.label;
     $("aqiStatus").className = "status-badge " + status.className;
   }
 
   const recent = sortedReadings().slice(0, 5);
 
-  $("recentTableBody").innerHTML = recent.map((reading) => `
+  $("recentTableBody").innerHTML = recent.map((r) => `
     <tr>
-      <td>${escapeHTML(formatDate(reading.date))}</td>
-      <td>${escapeHTML(reading.sensorId)}</td>
-      <td>${escapeHTML(reading.location)}</td>
-      <td><strong>${Number(reading.aqi)}</strong></td>
-      <td>${statusBadge(reading.aqi)}</td>
+      <td>${escapeHTML(formatDate(r.date))}</td>
+      <td>${escapeHTML(r.sensorId)}</td>
+      <td>${escapeHTML(r.location)}</td>
+      <td>${r.aqi}</td>
+      <td>${statusBadge(r.aqi)}</td>
     </tr>
   `).join("");
 
   $("recentEmpty").classList.toggle("hidden", recent.length > 0);
 }
 
-// ============================================
-// HISTORICAL ANALYSIS
-// ============================================
+/* ==========================================
+   HISTORICAL ANALYSIS
+========================================== */
 
 function renderHistory() {
-  const values = readings.map((reading) => Number(reading.aqi));
+  const values = readings.map((r) => Number(r.aqi));
 
   if (!values.length) {
     $("averageAqi").textContent = "--";
@@ -660,7 +631,9 @@ function renderHistory() {
     return;
   }
 
-  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const average =
+    values.reduce((sum, value) => sum + value, 0) / values.length;
+
   const highest = Math.max(...values);
   const lowest = Math.min(...values);
 
@@ -669,88 +642,88 @@ function renderHistory() {
   $("lowestAqi").textContent = lowest;
 
   $("historySummary").textContent =
-    `${readings.length} readings are available. ` +
-    `Average AQI: ${average.toFixed(1)} (${getAqiStatus(average).label}). ` +
-    `Highest AQI: ${highest}. Lowest AQI: ${lowest}.`;
+    `${readings.length} readings. Average AQI: ${average.toFixed(1)}. ` +
+    `Highest: ${highest}. Lowest: ${lowest}.`;
 
-  $("historyTableBody").innerHTML = sortedReadings().map((reading) => `
+  $("historyTableBody").innerHTML = sortedReadings().map((r) => `
     <tr>
-      <td>${escapeHTML(formatDate(reading.date))}</td>
-      <td>${escapeHTML(reading.sensorId)}</td>
-      <td>${escapeHTML(reading.location)}</td>
-      <td>${Number(reading.aqi)}</td>
-      <td>${statusBadge(reading.aqi)}</td>
+      <td>${escapeHTML(formatDate(r.date))}</td>
+      <td>${escapeHTML(r.sensorId)}</td>
+      <td>${escapeHTML(r.location)}</td>
+      <td>${r.aqi}</td>
+      <td>${statusBadge(r.aqi)}</td>
     </tr>
   `).join("");
 
   $("historyEmpty").classList.add("hidden");
 }
 
-// ============================================
-// SENSORS
-// ============================================
+/* ==========================================
+   SENSOR CARDS
+========================================== */
 
 function renderSensors() {
-  // Include sensors that already have readings.
-  const sensorMap = new Map();
+  const map = new Map();
 
-  sensors.forEach((sensor) => {
-    sensorMap.set(sensor.sensorId, {
-      ...sensor,
+  sensors.forEach((s) => {
+    map.set(s.sensorId.toLowerCase(), {
+      ...s,
       count: 0,
       latestAqi: null,
       latestDate: null
     });
   });
 
-  readings.forEach((reading) => {
-    if (!sensorMap.has(reading.sensorId)) {
-      sensorMap.set(reading.sensorId, {
-        id: createId(),
-        sensorId: reading.sensorId,
-        location: reading.location,
-        createdAt: reading.date,
+  readings.forEach((r) => {
+    const key = r.sensorId.toLowerCase();
+
+    if (!map.has(key)) {
+      map.set(key, {
+        id: makeId(),
+        sensorId: r.sensorId,
+        location: r.location,
+        createdAt: r.date,
         count: 0,
         latestAqi: null,
         latestDate: null
       });
     }
 
-    const sensor = sensorMap.get(reading.sensorId);
+    const sensor = map.get(key);
     sensor.count++;
 
     if (
       !sensor.latestDate ||
-      new Date(reading.date) > new Date(sensor.latestDate)
+      new Date(r.date) > new Date(sensor.latestDate)
     ) {
-      sensor.latestDate = reading.date;
-      sensor.latestAqi = Number(reading.aqi);
-      sensor.location = reading.location;
+      sensor.latestDate = r.date;
+      sensor.latestAqi = Number(r.aqi);
+      sensor.location = r.location;
     }
   });
 
-  const list = [...sensorMap.values()];
+  const list = [...map.values()];
 
-  $("sensorCards").innerHTML = list.map((sensor) => `
+  $("sensorCards").innerHTML = list.map((s) => `
     <article class="sensor-card">
       <div class="sensor-icon">⌖</div>
-      <h4>${escapeHTML(sensor.sensorId)}</h4>
-      <p>Location: ${escapeHTML(sensor.location)}</p>
-      <p>Readings: <strong>${sensor.count}</strong></p>
-      <p>Latest AQI: <strong>${sensor.latestAqi ?? "--"}</strong></p>
-      <p>Last recorded: ${sensor.latestDate
-        ? escapeHTML(formatDate(sensor.latestDate))
-        : "No readings yet"}</p>
-      ${sensor.latestAqi !== null ? statusBadge(sensor.latestAqi) : ""}
+      <h4>${escapeHTML(s.sensorId)}</h4>
+      <p>Location: ${escapeHTML(s.location)}</p>
+      <p>Readings: <strong>${s.count}</strong></p>
+      <p>Latest AQI: <strong>${s.latestAqi ?? "--"}</strong></p>
+      <p>Last recorded: ${
+        s.latestDate ? escapeHTML(formatDate(s.latestDate)) : "No readings yet"
+      }</p>
+      ${s.latestAqi !== null ? statusBadge(s.latestAqi) : ""}
     </article>
   `).join("");
 
   $("sensorsEmpty").classList.toggle("hidden", list.length > 0);
 }
 
-// ============================================
-// AQI CHARTS
-// ============================================
+/* ==========================================
+   AQI CHARTS
+========================================== */
 
 function drawCharts() {
   drawAqiChart("aqiChart");
@@ -761,12 +734,10 @@ function drawAqiChart(canvasId) {
   const canvas = $(canvasId);
   if (!canvas) return;
 
-  const emptyId = canvasId === "aqiChart"
-    ? "chartEmpty"
-    : "historyEmpty";
+  const emptyId = canvasId === "aqiChart" ? "chartEmpty" : "historyEmpty";
+  const empty = $(emptyId);
+  const ctx = canvas.getContext("2d");
 
-  const emptyElement = $(emptyId);
-  const context = canvas.getContext("2d");
   const width = Math.max(canvas.clientWidth, 280);
   const height = 240;
   const ratio = window.devicePixelRatio || 1;
@@ -775,100 +746,93 @@ function drawAqiChart(canvasId) {
   canvas.height = height * ratio;
   canvas.style.height = height + "px";
 
-  context.setTransform(ratio, 0, 0, ratio, 0, 0);
-  context.clearRect(0, 0, width, height);
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, width, height);
 
   const records = [...readings]
     .sort((a, b) => new Date(a.date) - new Date(b.date))
     .slice(-12);
 
   if (!records.length) {
-    if (canvasId === "aqiChart") {
-      emptyElement.classList.remove("hidden");
-    } else if (!readings.length) {
-      emptyElement.classList.remove("hidden");
-    }
+    empty.classList.remove("hidden");
     return;
   }
 
-  emptyElement.classList.add("hidden");
+  empty.classList.add("hidden");
 
-  const padding = { left: 42, right: 15, top: 20, bottom: 42 };
-  const plotWidth = width - padding.left - padding.right;
-  const plotHeight = height - padding.top - padding.bottom;
+  const p = { left: 42, right: 15, top: 20, bottom: 42 };
+  const plotW = width - p.left - p.right;
+  const plotH = height - p.top - p.bottom;
 
-  const maxValue = Math.max(
+  const max = Math.max(
     100,
-    Math.ceil(Math.max(...records.map((record) => Number(record.aqi))) / 50) * 50
+    Math.ceil(Math.max(...records.map((r) => Number(r.aqi))) / 50) * 50
   );
 
-  context.font = "10px Arial";
-  context.textAlign = "right";
-  context.textBaseline = "middle";
+  ctx.font = "10px Arial";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
 
-  for (let step = 0; step <= 4; step++) {
-    const value = maxValue * step / 4;
-    const y = padding.top + plotHeight - value / maxValue * plotHeight;
+  for (let i = 0; i <= 4; i++) {
+    const value = max * i / 4;
+    const y = p.top + plotH - value / max * plotH;
 
-    context.strokeStyle = "#e8efeb";
-    context.beginPath();
-    context.moveTo(padding.left, y);
-    context.lineTo(width - padding.right, y);
-    context.stroke();
+    ctx.strokeStyle = "#e8efeb";
+    ctx.beginPath();
+    ctx.moveTo(p.left, y);
+    ctx.lineTo(width - p.right, y);
+    ctx.stroke();
 
-    context.fillStyle = "#87968e";
-    context.fillText(String(Math.round(value)), padding.left - 8, y);
+    ctx.fillStyle = "#87968e";
+    ctx.fillText(String(Math.round(value)), p.left - 8, y);
   }
 
-  const points = records.map((record, index) => ({
+  const points = records.map((r, i) => ({
     x: records.length === 1
-      ? padding.left + plotWidth / 2
-      : padding.left + index / (records.length - 1) * plotWidth,
-    y: padding.top + plotHeight -
-      Number(record.aqi) / maxValue * plotHeight,
-    record
+      ? p.left + plotW / 2
+      : p.left + i / (records.length - 1) * plotW,
+    y: p.top + plotH - Number(r.aqi) / max * plotH,
+    record: r
   }));
 
-  context.beginPath();
-  context.moveTo(points[0].x, padding.top + plotHeight);
-  points.forEach((point) => context.lineTo(point.x, point.y));
-  context.lineTo(points[points.length - 1].x, padding.top + plotHeight);
-  context.closePath();
-  context.fillStyle = "rgba(21,150,106,0.10)";
-  context.fill();
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, p.top + plotH);
+  points.forEach((point) => ctx.lineTo(point.x, point.y));
+  ctx.lineTo(points[points.length - 1].x, p.top + plotH);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(21,150,106,0.10)";
+  ctx.fill();
 
-  context.beginPath();
-  points.forEach((point, index) => {
-    if (index === 0) context.moveTo(point.x, point.y);
-    else context.lineTo(point.x, point.y);
+  ctx.beginPath();
+  points.forEach((point, i) => {
+    if (i === 0) ctx.moveTo(point.x, point.y);
+    else ctx.lineTo(point.x, point.y);
   });
+  ctx.strokeStyle = "#15966a";
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
 
-  context.strokeStyle = "#15966a";
-  context.lineWidth = 2.5;
-  context.stroke();
-
-  points.forEach((point, index) => {
-    context.beginPath();
-    context.arc(point.x, point.y, 4, 0, Math.PI * 2);
-    context.fillStyle = "#15966a";
-    context.fill();
-
-    const date = new Date(point.record.date);
-    const label = Number.isNaN(date.getTime())
-      ? ""
-      : date.toLocaleDateString([], { month: "short", day: "numeric" });
+  points.forEach((point, i) => {
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = "#15966a";
+    ctx.fill();
 
     if (
       records.length <= 6 ||
-      index === 0 ||
-      index === points.length - 1 ||
-      index % 2 === 0
+      i === 0 ||
+      i === points.length - 1 ||
+      i % 2 === 0
     ) {
-      context.fillStyle = "#87968e";
-      context.textAlign = "center";
-      context.textBaseline = "top";
-      context.font = "9px Arial";
-      context.fillText(label, point.x, padding.top + plotHeight + 12);
+      const d = new Date(point.record.date);
+      const label = Number.isNaN(d.getTime())
+        ? ""
+        : d.toLocaleDateString([], { month: "short", day: "numeric" });
+
+      ctx.fillStyle = "#87968e";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillText(label, point.x, p.top + plotH + 12);
     }
   });
 }
@@ -877,9 +841,9 @@ window.addEventListener("resize", () => {
   if (!$("dashboardPage").classList.contains("hidden")) drawCharts();
 });
 
-// ============================================
-// CSV EXPORT
-// ============================================
+/* ==========================================
+   CSV EXPORT
+========================================== */
 
 function exportCsv() {
   if (!readings.length) {
@@ -893,16 +857,9 @@ function exportCsv() {
     "Humidity Percent", "Date and Time"
   ];
 
-  const rows = sortedReadings().map((reading) => [
-    reading.id,
-    reading.sensorId,
-    reading.location,
-    reading.aqi,
-    reading.pm25,
-    reading.pm10,
-    reading.temperature,
-    reading.humidity,
-    reading.date
+  const rows = sortedReadings().map((r) => [
+    r.id, r.sensorId, r.location, r.aqi,
+    r.pm25, r.pm10, r.temperature, r.humidity, r.date
   ]);
 
   const cell = (value) =>
@@ -924,15 +881,14 @@ function exportCsv() {
   document.body.appendChild(link);
   link.click();
   link.remove();
-
   URL.revokeObjectURL(url);
 }
 
 $("historyExportBtn").addEventListener("click", exportCsv);
 
-// ============================================
-// REFRESH ALL SECTIONS
-// ============================================
+/* ==========================================
+   REFRESH ALL DASHBOARD CONTENT
+========================================== */
 
 function renderAll() {
   renderOverview();
@@ -942,4 +898,11 @@ function renderAll() {
   drawCharts();
 }
 
+/* ==========================================
+   START APPLICATION
+========================================== */
+
+// Start on login unless a valid saved session exists.
+$("loginPage").classList.remove("hidden");
+$("dashboardPage").classList.add("hidden");
 restoreSession();
