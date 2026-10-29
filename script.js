@@ -1,102 +1,329 @@
 
-const $ = id => document.getElementById(id);
+"use strict";
 
-const dateOffset = (days, hour = 10) => {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  d.setHours(hour, 30, 0, 0);
-  return d.toISOString().slice(0, 16);
+/*
+ AIRWATCH FRONTEND DEMO
+ Storage: browser localStorage, NOT MySQL.
+ Authentication: demonstration only, NOT secure production authentication.
+*/
+
+const $ = id => document.getElementById(id);
+const STORAGE_KEY = "airwatch_project_v2";
+const SESSION_KEY = "airwatch_demo_session";
+const ALERT_THRESHOLD = 150;
+
+const PAGE_TITLES = {
+  dashboard: "Air Quality Dashboard",
+  sensors: "Sensor Management",
+  readings: "Historical Readings",
+  alerts: "Pollution Alerts",
+  reports: "Reports & Analytics",
+  docs: "DBMS Documentation"
 };
 
-let nextSensorId = 5;
-let nextReadingId = 9;
+const DEMO_ACCOUNT = {
+  email: "demo@airwatch.test",
+  password: "AirWatch123",
+  name: "Demo User"
+};
 
-let sensors = [
-  { id: 1, name: "Campus Central", location: "College Campus", lat: 16.30, lon: 80.45, status: "Active" },
-  { id: 2, name: "City Monitor", location: "City Center", lat: 16.31, lon: 80.44, status: "Active" },
-  { id: 3, name: "Industrial Watch", location: "Industrial Area", lat: 16.34, lon: 80.48, status: "Maintenance" },
-  { id: 4, name: "Green Park Sensor", location: "Green Park", lat: 16.29, lon: 80.43, status: "Inactive" }
-];
-
-let readings = [
-  { id: 1, sensorId: 1, date: dateOffset(6, 8), pm25: 24, pm10: 41, co2: 420, aqi: 65 },
-  { id: 2, sensorId: 2, date: dateOffset(5, 9), pm25: 42, pm10: 70, co2: 450, aqi: 105 },
-  { id: 3, sensorId: 3, date: dateOffset(4, 10), pm25: 71, pm10: 120, co2: 520, aqi: 165 },
-  { id: 4, sensorId: 1, date: dateOffset(3, 11), pm25: 29, pm10: 48, co2: 430, aqi: 78 },
-  { id: 5, sensorId: 2, date: dateOffset(2, 12), pm25: 52, pm10: 90, co2: 470, aqi: 125 },
-  { id: 6, sensorId: 3, date: dateOffset(1, 13), pm25: 85, pm10: 145, co2: 580, aqi: 210 },
-  { id: 7, sensorId: 1, date: dateOffset(0, 9), pm25: 20, pm10: 36, co2: 410, aqi: 52 },
-  { id: 8, sensorId: 2, date: dateOffset(0, 11), pm25: 45, pm10: 77, co2: 460, aqi: 115 }
-];
-
-let resolvedAlerts = new Set();
-let aqiChart = null;
-let pollutionChart = null;
+let charts = { aqi: null, pollutants: null };
+let authMode = "login";
 let toastTimer;
 
-function esc(value) {
-  return String(value ?? "").replace(/[&<>"']/g, c => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;",
-    '"': "&quot;", "'": "&#39;"
-  }[c]));
+const initialData = {
+  sensors: [
+    { id: 1, name: "Central Station", location: "Vijayawada City Centre", lat: 16.5062, lon: 80.6480, status: "Active" },
+    { id: 2, name: "Campus Monitor", location: "College Campus", lat: 16.3067, lon: 80.4365, status: "Active" },
+    { id: 3, name: "Industrial Monitor", location: "Industrial Area", lat: 16.5300, lon: 80.6800, status: "Maintenance" },
+    { id: 4, name: "Green Park Sensor", location: "City Park", lat: 16.5100, lon: 80.6200, status: "Active" }
+  ],
+  readings: [],
+  alerts: [],
+  nextSensorId: 5,
+  nextReadingId: 1,
+  nextAlertId: 1
+};
+
+function localDateTime(offsetMinutes = 0) {
+  const d = new Date(Date.now() + offsetMinutes * 60000);
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
 }
 
-function sensorById(id) {
-  return sensors.find(s => s.id === Number(id));
+function seedReadings() {
+  const values = [
+    [1, 32, 58, 420, 82],
+    [2, 48, 81, 455, 126],
+    [3, 76, 130, 510, 178],
+    [4, 18, 35, 390, 45],
+    [1, 40, 70, 440, 105],
+    [2, 55, 92, 470, 142],
+    [3, 92, 155, 560, 226],
+    [4, 22, 41, 400, 58],
+    [1, 29, 50, 415, 76],
+    [2, 43, 74, 445, 118],
+    [3, 68, 118, 505, 164],
+    [4, 15, 30, 380, 36]
+  ];
+
+  return values.map((v, i) => ({
+    id: i + 1,
+    sensorId: v[0],
+    date: localDateTime((i - values.length + 1) * 180),
+    pm25: v[1],
+    pm10: v[2],
+    co2: v[3],
+    aqi: v[4]
+  }));
 }
 
-function sensorName(id) {
-  return sensorById(id)?.name || "Deleted sensor";
+function makeInitialData() {
+  const data = structuredClone(initialData);
+  data.readings = seedReadings();
+  data.nextReadingId = data.readings.length + 1;
+  return data;
 }
 
-function fmtDate(value) {
-  return new Date(value).toLocaleString([], {
-    dateStyle: "medium",
-    timeStyle: "short"
+function loadData() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed.sensors) &&
+          Array.isArray(parsed.readings) &&
+          Array.isArray(parsed.alerts)) {
+        return parsed;
+      }
+    }
+  } catch (error) {
+    console.error("Unable to load saved demo data:", error);
+  }
+
+  const data = makeInitialData();
+  saveData(data);
+  return data;
+}
+
+let db = loadData();
+
+/* Browser storage is used only for this frontend demonstration. */
+function saveData(data = db) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    return true;
+  } catch (error) {
+    console.error(error);
+    notify("Could not save data in this browser.");
+    return false;
+  }
+}
+
+function notify(message) {
+  const toast = $("toast");
+  toast.textContent = message;
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 2800);
+}
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[char]);
+}
+
+function number(value) {
+  return Number(value).toLocaleString("en-IN", {
+    maximumFractionDigits: 1
   });
 }
 
+function formatDate(value) {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime())
+    ? "Invalid date"
+    : d.toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+}
+
 function aqiCategory(aqi) {
-  if (aqi <= 50) return ["Good", "good"];
-  if (aqi <= 100) return ["Moderate", "moderate"];
-  if (aqi <= 150) return ["Poor", "poor"];
-  if (aqi <= 200) return ["Very Poor", "severe"];
-  return ["Severe", "severe"];
+  if (aqi <= 50) return { name: "Good", css: "good" };
+  if (aqi <= 100) return { name: "Satisfactory", css: "good" };
+  if (aqi <= 200) return { name: "Moderate", css: "moderate" };
+  if (aqi <= 300) return { name: "Poor", css: "poor" };
+  if (aqi <= 400) return { name: "Very Poor", css: "severe" };
+  return { name: "Severe", css: "severe" };
 }
 
-function badge(text, kind) {
-  return `<span class="badge badge-${kind.toLowerCase()}">${esc(text)}</span>`;
+function aqiBadge(aqi) {
+  const category = aqiCategory(Number(aqi));
+  return `<span class="badge badge-${category.css}">${escapeHTML(category.name)} (${number(aqi)})</span>`;
 }
 
-function showToast(message) {
-  $("toast").textContent = message;
-  $("toast").classList.add("show");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => $("toast").classList.remove("show"), 2600);
+function statusBadge(status) {
+  const css = String(status).toLowerCase();
+  return `<span class="badge badge-${escapeHTML(css)}">${escapeHTML(status)}</span>`;
+}
+
+function sensorById(id) {
+  return db.sensors.find(sensor => Number(sensor.id) === Number(id));
+}
+
+function sortedReadings(readings = db.readings) {
+  return [...readings].sort((a, b) =>
+    new Date(b.date) - new Date(a.date)
+  );
 }
 
 function showPage(page) {
-  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-  document.querySelectorAll(".nav").forEach(b => b.classList.remove("active"));
+  if (!PAGE_TITLES[page]) return;
 
-  $(page)?.classList.add("active");
-  document.querySelector(`.nav[data-page="${page}"]`)?.classList.add("active");
+  document.querySelectorAll(".page").forEach(section => {
+    section.classList.toggle("active", section.id === page);
+  });
 
-  const titles = {
-    dashboard: "Air Quality Dashboard",
-    sensors: "Sensor Management",
-    readings: "Historical Readings",
-    alerts: "Pollution Alerts",
-    reports: "Reports & Analytics",
-    docs: "DBMS Documentation"
-  };
+  document.querySelectorAll(".nav").forEach(button => {
+    button.classList.toggle("active", button.dataset.page === page);
+  });
 
-  $("page-title").textContent = titles[page] || "AirWatch";
+  $("page-title").textContent = PAGE_TITLES[page];
   $("crumb").textContent = page.toUpperCase();
-  window.scrollTo({ top: 0, behavior: "smooth" });
 
-  renderAll();
+  if (page === "dashboard") renderDashboard();
+  if (page === "sensors") renderSensors();
+  if (page === "readings") renderReadings();
+  if (page === "alerts") renderAlerts();
+  if (page === "reports") renderReports();
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
+
+function currentUser() {
+  try {
+    return JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function showApplication(user) {
+  $("auth-screen").hidden = true;
+  $("app").hidden = false;
+  $("welcome-user").textContent = user.name;
+  $("user-avatar").textContent = user.name
+    .split(/\s+/).map(part => part[0]).join("").slice(0, 2).toUpperCase();
+
+  showPage("dashboard");
+}
+
+function showAuthentication() {
+  $("app").hidden = true;
+  $("auth-screen").hidden = false;
+  setAuthMode("login");
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  const registering = mode === "register";
+
+  $("auth-title").textContent = registering ? "Create your account" : "Welcome back";
+  $("auth-subtitle").textContent = registering
+    ? "Create a demo account for this browser session."
+    : "Sign in to monitor air quality and sensor readings.";
+  $("name-wrap").hidden = !registering;
+  $("auth-name").required = registering;
+  $("auth-password").autocomplete = registering ? "new-password" : "current-password";
+  $("auth-submit").textContent = registering ? "Create Account" : "Sign In";
+  $("auth-switch-text").textContent = registering
+    ? "Already have an account?"
+    : "New to AirWatch?";
+  $("auth-switch").textContent = registering ? "Sign in" : "Create account";
+}
+
+$("auth-switch").addEventListener("click", () => {
+  setAuthMode(authMode === "login" ? "register" : "login");
+});
+
+$("auth-form").addEventListener("submit", event => {
+  event.preventDefault();
+
+  const email = $("auth-email").value.trim().toLowerCase();
+  const password = $("auth-password").value;
+  const name = $("auth-name").value.trim();
+
+  if (authMode === "register") {
+    if (name.length < 2) {
+      notify("Enter a name with at least two characters.");
+      return;
+    }
+
+    if (email === DEMO_ACCOUNT.email) {
+      notify("That email is reserved for the demo account.");
+      return;
+    }
+
+    /*
+      No password is saved. Registration creates a session-only
+      demonstration account and will not survive a page reload.
+      Use a real backend and bcrypt for production registration.
+    */
+    if (password.length < 6) {
+      notify("Password must contain at least six characters.");
+      return;
+    }
+
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+      name,
+      email,
+      role: "user",
+      demo: true
+    }));
+
+    $("auth-form").reset();
+    showApplication(currentUser());
+    notify("Demo session created. No account was saved to a server.");
+    return;
+  }
+
+  if (email === DEMO_ACCOUNT.email && password === DEMO_ACCOUNT.password) {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+      name: DEMO_ACCOUNT.name,
+      email: DEMO_ACCOUNT.email,
+      role: "admin",
+      demo: true
+    }));
+
+    $("auth-form").reset();
+    showApplication(currentUser());
+    notify("Demo login successful.");
+    return;
+  }
+
+  notify("Invalid demo credentials. Use the demo account below.");
+});
+
+$("demo-login").addEventListener("click", () => {
+  $("auth-email").value = DEMO_ACCOUNT.email;
+  $("auth-password").value = DEMO_ACCOUNT.password;
+  setAuthMode("login");
+  $("auth-form").requestSubmit();
+});
+
+$("logout").addEventListener("click", () => {
+  sessionStorage.removeItem(SESSION_KEY);
+  showAuthentication();
+  notify("You have logged out.");
+});
 
 document.querySelectorAll(".nav").forEach(button => {
   button.addEventListener("click", () => showPage(button.dataset.page));
@@ -106,63 +333,94 @@ document.querySelectorAll("[data-goto]").forEach(button => {
   button.addEventListener("click", () => showPage(button.dataset.goto));
 });
 
-function getAlerts() {
-  return readings
-    .filter(r => r.aqi > 150)
-    .map(r => ({
-      id: r.id,
-      readingId: r.id,
-      sensorId: r.sensorId,
-      aqi: r.aqi,
-      date: r.date,
-      severity: r.aqi > 200 ? "Severe" : "High",
-      status: resolvedAlerts.has(r.id) ? "Resolved" : "Open"
-    }))
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
+/* POLLUTION ALERTS */
+
+function generateAlertsForReading(reading) {
+  if (Number(reading.aqi) <= ALERT_THRESHOLD) return;
+
+  const existing = db.alerts.some(alert =>
+    Number(alert.readingId) === Number(reading.id) &&
+    alert.type === "HIGH_AQI"
+  );
+
+  if (existing) return;
+
+  const sensor = sensorById(reading.sensorId);
+  if (!sensor) return;
+
+  db.alerts.push({
+    id: db.nextAlertId++,
+    sensorId: sensor.id,
+    readingId: reading.id,
+    type: "HIGH_AQI",
+    message: `AQI ${reading.aqi} exceeded the demo threshold of ${ALERT_THRESHOLD}.`,
+    severity: Number(reading.aqi) > 300 ? "Severe" : "High",
+    date: reading.date,
+    status: "Open"
+  });
 }
+
+function rebuildAlerts() {
+  db.alerts = [];
+  db.nextAlertId = 1;
+
+  db.readings.forEach(generateAlertsForReading);
+
+  saveData();
+}
+
+/* DASHBOARD */
 
 function renderDashboard() {
-  $("total-sensors").textContent = sensors.length;
-  $("active-sensors").textContent = sensors.filter(s => s.status === "Active").length;
+  $("total-sensors").textContent = db.sensors.length;
+  $("active-sensors").textContent = db.sensors.filter(s => s.status === "Active").length;
 
-  const latest = [...readings].sort((a, b) => new Date(b.date) - new Date(a.date));
-  const mostRecent = latest[0];
+  const latest = sortedReadings()[0];
 
-  $("latest-aqi").textContent = mostRecent ? mostRecent.aqi : "--";
-  $("aqi-status").textContent = mostRecent
-    ? aqiCategory(mostRecent.aqi)[0]
+  $("latest-aqi").textContent = latest ? number(latest.aqi) : "--";
+  $("aqi-status").textContent = latest
+    ? aqiCategory(Number(latest.aqi)).name
     : "No readings";
 
-  $("open-alerts").textContent = getAlerts().filter(a => a.status === "Open").length;
+  $("open-alerts").textContent = db.alerts.filter(a => a.status === "Open").length;
 
-  $("latest-table").innerHTML = latest.slice(0, 6).map(r => `
-    <tr>
-      <td>${esc(sensorName(r.sensorId))}</td>
-      <td>${esc(sensorById(r.sensorId)?.location || "Unknown")}</td>
-      <td>${badge(`${r.aqi} · ${aqiCategory(r.aqi)[0]}`, aqiCategory(r.aqi)[1])}</td>
-      <td>${r.pm25}</td>
-      <td>${r.pm10}</td>
-      <td>${esc(fmtDate(r.date))}</td>
-    </tr>
-  `).join("") || `<tr><td colspan="6" class="empty">No readings found.</td></tr>`;
+  const latestRows = sortedReadings().slice(0, 8);
 
-  renderCharts(latest);
+  $("latest-table").innerHTML = latestRows.length
+    ? latestRows.map(reading => {
+        const sensor = sensorById(reading.sensorId);
+        return `<tr>
+          <td>${escapeHTML(sensor?.name || "Deleted sensor")}</td>
+          <td>${escapeHTML(sensor?.location || "Unknown")}</td>
+          <td>${aqiBadge(reading.aqi)}</td>
+          <td>${number(reading.pm25)}</td>
+          <td>${number(reading.pm10)}</td>
+          <td>${formatDate(reading.date)}</td>
+        </tr>`;
+      }).join("")
+    : emptyRow(6, "No readings recorded yet.");
+
+  renderCharts();
 }
 
-function renderCharts(latest) {
-  const history = [...latest].sort((a, b) => new Date(a.date) - new Date(b.date));
+function renderCharts() {
+  if (typeof Chart === "undefined") {
+    notify("Charts could not load. Check your internet connection.");
+    return;
+  }
 
-  const chartDefaults = {
+  const readings = sortedReadings().slice(0, 12).reverse();
+
+  const commonOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: { intersect: false, mode: "index" },
     plugins: {
-      legend: {
-        labels: { color: "#b9c9df", boxWidth: 12, usePointStyle: true }
-      }
+      legend: { labels: { color: "#c5d3e7", boxWidth: 12 } }
     },
     scales: {
       x: {
-        ticks: { color: "#91a2bb", maxTicksLimit: 7 },
+        ticks: { color: "#91a2bb", maxRotation: 40, minRotation: 0 },
         grid: { color: "#23344b" }
       },
       y: {
@@ -173,80 +431,93 @@ function renderCharts(latest) {
     }
   };
 
-  if (aqiChart) aqiChart.destroy();
-  aqiChart = new Chart($("aqiChart"), {
+  if (charts.aqi) charts.aqi.destroy();
+  if (charts.pollutants) charts.pollutants.destroy();
+
+  charts.aqi = new Chart($("aqiChart"), {
     type: "line",
     data: {
-      labels: history.map(r => new Date(r.date).toLocaleDateString()),
+      labels: readings.map(r => {
+        const d = new Date(r.date);
+        return Number.isNaN(d.getTime())
+          ? "Unknown"
+          : d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+      }),
       datasets: [{
         label: "AQI",
-        data: history.map(r => r.aqi),
+        data: readings.map(r => Number(r.aqi)),
         borderColor: "#39d9a0",
-        backgroundColor: "rgba(57,217,160,.12)",
+        backgroundColor: "#39d9a022",
         fill: true,
         tension: 0.35,
-        pointRadius: 4
+        pointRadius: 3
       }]
     },
-    options: chartDefaults
+    options: commonOptions
   });
 
-  const selected = history.slice(-8);
-  if (pollutionChart) pollutionChart.destroy();
+  const latestPerSensor = db.sensors.map(sensor => {
+    const reading = sortedReadings().find(r => Number(r.sensorId) === Number(sensor.id));
+    return { sensor, reading };
+  }).filter(item => item.reading);
 
-  pollutionChart = new Chart($("pollutionChart"), {
+  charts.pollutants = new Chart($("pollutionChart"), {
     type: "bar",
     data: {
-      labels: selected.map(r => sensorName(r.sensorId).slice(0, 12)),
+      labels: latestPerSensor.map(item => item.sensor.name),
       datasets: [
-        { label: "PM2.5", data: selected.map(r => r.pm25), backgroundColor: "#58a6ff" },
-        { label: "PM10", data: selected.map(r => r.pm10), backgroundColor: "#f5ca58" },
-        { label: "CO₂", data: selected.map(r => r.co2), backgroundColor: "#ff9c52" }
+        { label: "PM2.5 (µg/m³)", data: latestPerSensor.map(item => item.reading.pm25), backgroundColor: "#58a6ff" },
+        { label: "PM10 (µg/m³)", data: latestPerSensor.map(item => item.reading.pm10), backgroundColor: "#ff9c52" },
+        { label: "CO₂ (ppm)", data: latestPerSensor.map(item => item.reading.co2), backgroundColor: "#39d9a0" }
       ]
     },
-    options: chartDefaults
+    options: commonOptions
   });
 }
 
-function renderSensorOptions() {
-  const options = sensors.map(s =>
-    `<option value="${s.id}">${esc(s.name)} — ${esc(s.location)}</option>`
-  ).join("");
-
-  const filter = $("reading-sensor-filter");
-  const previous = filter.value;
-  filter.innerHTML = `<option value="">All sensors</option>${options}`;
-  if ([...filter.options].some(o => o.value === previous)) filter.value = previous;
-
-  const formSelect = $("reading-sensor");
-  const formPrevious = formSelect.value;
-  formSelect.innerHTML = options;
-  if ([...formSelect.options].some(o => o.value === formPrevious)) {
-    formSelect.value = formPrevious;
-  }
-}
+/* SENSORS */
 
 function renderSensors() {
   const query = $("sensor-search").value.trim().toLowerCase();
   const status = $("sensor-status-filter").value;
 
-  const filtered = sensors.filter(s =>
-    `${s.name} ${s.location} ${s.id}`.toLowerCase().includes(query) &&
-    (!status || s.status === status)
+  const sensors = db.sensors.filter(sensor =>
+    `${sensor.name} ${sensor.location} ${sensor.id}`.toLowerCase().includes(query) &&
+    (!status || sensor.status === status)
   );
 
-  $("sensors-table").innerHTML = filtered.map(s => `
-    <tr>
-      <td>#${s.id}</td>
-      <td>${esc(s.name)}</td>
-      <td>${esc(s.location)}</td>
-      <td>${badge(s.status, s.status.toLowerCase())}</td>
+  $("sensors-table").innerHTML = sensors.length
+    ? sensors.map(sensor => `<tr>
+      <td>#${sensor.id}</td>
+      <td>${escapeHTML(sensor.name)}</td>
+      <td>${escapeHTML(sensor.location)}</td>
+      <td>${number(sensor.lat)}, ${number(sensor.lon)}</td>
+      <td>${statusBadge(sensor.status)}</td>
       <td><div class="table-actions">
-        <button class="mini-btn" data-edit-sensor="${s.id}">Edit</button>
-        <button class="mini-btn delete" data-delete-sensor="${s.id}">Delete</button>
+        <button class="mini-btn" data-edit-sensor="${sensor.id}">Edit</button>
+        <button class="mini-btn delete" data-delete-sensor="${sensor.id}">Delete</button>
       </div></td>
-    </tr>
-  `).join("") || `<tr><td colspan="5" class="empty">No sensors match your search.</td></tr>`;
+    </tr>`).join("")
+    : emptyRow(6, "No matching sensors found.");
+
+  renderSensorOptions();
+}
+
+function renderSensorOptions() {
+  const filter = $("reading-sensor-filter");
+  const formSelect = $("reading-sensor");
+  const oldFilter = filter.value;
+  const oldForm = formSelect.value;
+
+  const options = db.sensors.map(sensor =>
+    `<option value="${sensor.id}">${escapeHTML(sensor.name)} — ${escapeHTML(sensor.location)}</option>`
+  ).join("");
+
+  filter.innerHTML = `<option value="">All sensors</option>${options}`;
+  formSelect.innerHTML = options || `<option value="">Add a sensor first</option>`;
+
+  if ([...filter.options].some(o => o.value === oldFilter)) filter.value = oldFilter;
+  if ([...formSelect.options].some(o => o.value === oldForm)) formSelect.value = oldForm;
 }
 
 $("sensor-search").addEventListener("input", renderSensors);
@@ -256,8 +527,9 @@ $("add-sensor").addEventListener("click", () => {
   $("sensor-form").reset();
   $("sensor-id").value = "";
   $("sensor-form-title").textContent = "Add Sensor";
+  $("sensor-status").value = "Active";
   $("sensor-form-panel").hidden = false;
-  $("sensor-form-panel").scrollIntoView({ behavior: "smooth" });
+  $("sensor-form-panel").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 $("cancel-sensor").addEventListener("click", () => {
@@ -268,33 +540,40 @@ $("sensor-form").addEventListener("submit", event => {
   event.preventDefault();
 
   const id = Number($("sensor-id").value);
-  const item = {
-    name: $("sensor-name").value.trim(),
-    location: $("sensor-location").value.trim(),
-    lat: Number($("sensor-lat").value),
-    lon: Number($("sensor-lon").value),
-    status: $("sensor-status").value
-  };
+  const lat = Number($("sensor-lat").value);
+  const lon = Number($("sensor-lon").value);
 
-  if (!item.name || !item.location ||
-      !Number.isFinite(item.lat) || !Number.isFinite(item.lon) ||
-      item.lat < -90 || item.lat > 90 ||
-      item.lon < -180 || item.lon > 180) {
-    showToast("Enter valid sensor details.");
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90 ||
+      !Number.isFinite(lon) || lon < -180 || lon > 180) {
+    notify("Enter valid latitude and longitude.");
     return;
   }
 
-  if (id) {
-    const existing = sensorById(id);
-    if (existing) Object.assign(existing, item);
-    showToast("Sensor updated in this demo.");
-  } else {
-    sensors.push({ id: nextSensorId++, ...item });
-    showToast("Sensor added in this demo.");
+  const sensor = {
+    id: id || db.nextSensorId++,
+    name: $("sensor-name").value.trim(),
+    location: $("sensor-location").value.trim(),
+    lat,
+    lon,
+    status: $("sensor-status").value
+  };
+
+  if (!sensor.name || !sensor.location) {
+    notify("Sensor name and location are required.");
+    return;
   }
 
+  const index = db.sensors.findIndex(s => Number(s.id) === id);
+
+  if (index >= 0) db.sensors[index] = sensor;
+  else db.sensors.push(sensor);
+
+  saveData();
   $("sensor-form-panel").hidden = true;
-  renderAll();
+  renderSensors();
+  renderDashboard();
+  renderReports();
+  notify(index >= 0 ? "Sensor updated." : "Sensor added.");
 });
 
 $("sensors-table").addEventListener("click", event => {
@@ -318,56 +597,78 @@ $("sensors-table").addEventListener("click", event => {
 
   if (deleteButton) {
     const id = Number(deleteButton.dataset.deleteSensor);
-    if (!confirm("Delete this sensor and its readings from the demo?")) return;
+    const sensor = sensorById(id);
+    if (!sensor) return;
 
-    sensors = sensors.filter(s => s.id !== id);
-    const removedReadingIds = readings.filter(r => r.sensorId === id).map(r => r.id);
-    readings = readings.filter(r => r.sensorId !== id);
-    removedReadingIds.forEach(id => resolvedAlerts.delete(id));
+    if (db.readings.some(r => Number(r.sensorId) === id)) {
+      notify("Cannot delete: this sensor has readings. Delete its readings first.");
+      return;
+    }
 
-    renderAll();
-    showToast("Sensor and related demo readings deleted.");
+    if (!confirm(`Delete sensor "${sensor.name}"?`)) return;
+
+    db.sensors = db.sensors.filter(s => Number(s.id) !== id);
+    db.alerts = db.alerts.filter(a => Number(a.sensorId) !== id);
+    saveData();
+    renderSensors();
+    renderDashboard();
+    renderAlerts();
+    renderReports();
+    notify("Sensor deleted.");
   }
 });
 
-function getFilteredReadings() {
+/* HISTORICAL READINGS */
+
+function filteredReadings() {
   const sensorId = $("reading-sensor-filter").value;
   const from = $("date-from").value;
   const to = $("date-to").value;
 
-  return [...readings]
-    .filter(r => !sensorId || r.sensorId === Number(sensorId))
-    .filter(r => !from || r.date.slice(0, 10) >= from)
-    .filter(r => !to || r.date.slice(0, 10) <= to)
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
+  return sortedReadings().filter(reading => {
+    const date = new Date(reading.date);
+    const day = Number.isNaN(date.getTime()) ? "" : [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0")
+    ].join("-");
+
+    return (!sensorId || Number(reading.sensorId) === Number(sensorId)) &&
+      (!from || day >= from) &&
+      (!to || day <= to);
+  });
 }
 
 function renderReadings() {
-  const filtered = getFilteredReadings();
+  renderSensorOptions();
 
-  $("record-count").textContent = filtered.length;
-  $("avg-aqi").textContent = filtered.length
-    ? Math.round(filtered.reduce((sum, r) => sum + r.aqi, 0) / filtered.length)
-    : "--";
-  $("max-aqi").textContent = filtered.length
-    ? Math.max(...filtered.map(r => r.aqi))
-    : "--";
+  const readings = filteredReadings();
+  const values = readings.map(r => Number(r.aqi));
 
-  $("readings-table").innerHTML = filtered.map(r => `
-    <tr>
-      <td>#${r.id}</td>
-      <td>${esc(sensorName(r.sensorId))}</td>
-      <td>${esc(fmtDate(r.date))}</td>
-      <td>${r.pm25}</td>
-      <td>${r.pm10}</td>
-      <td>${r.co2}</td>
-      <td>${badge(`${r.aqi} · ${aqiCategory(r.aqi)[0]}`, aqiCategory(r.aqi)[1])}</td>
-      <td><div class="table-actions">
-        <button class="mini-btn" data-edit-reading="${r.id}">Edit</button>
-        <button class="mini-btn delete" data-delete-reading="${r.id}">Delete</button>
-      </div></td>
-    </tr>
-  `).join("") || `<tr><td colspan="8" class="empty">No readings match these filters.</td></tr>`;
+  $("avg-aqi").textContent = values.length
+    ? number(values.reduce((sum, value) => sum + value, 0) / values.length)
+    : "--";
+  $("max-aqi").textContent = values.length ? number(Math.max(...values)) : "--";
+  $("record-count").textContent = readings.length;
+
+  $("readings-table").innerHTML = readings.length
+    ? readings.map(reading => {
+        const sensor = sensorById(reading.sensorId);
+        return `<tr>
+          <td>#${reading.id}</td>
+          <td>${escapeHTML(sensor?.name || "Deleted sensor")}</td>
+          <td>${formatDate(reading.date)}</td>
+          <td>${number(reading.pm25)}</td>
+          <td>${number(reading.pm10)}</td>
+          <td>${number(reading.co2)}</td>
+          <td>${aqiBadge(reading.aqi)}</td>
+          <td><div class="table-actions">
+            <button class="mini-btn" data-edit-reading="${reading.id}">Edit</button>
+            <button class="mini-btn delete" data-delete-reading="${reading.id}">Delete</button>
+          </div></td>
+        </tr>`;
+      }).join("")
+    : emptyRow(8, "No readings match these filters.");
 }
 
 ["reading-sensor-filter", "date-from", "date-to"].forEach(id => {
@@ -379,17 +680,19 @@ $("clear-filters").addEventListener("click", () => {
   $("date-from").value = "";
   $("date-to").value = "";
   renderReadings();
+  notify("Filters cleared.");
 });
 
 $("add-reading").addEventListener("click", () => {
-  if (!sensors.length) {
-    showToast("Add a sensor before adding readings.");
+  if (!db.sensors.length) {
+    notify("Add a sensor before recording readings.");
+    showPage("sensors");
     return;
   }
 
   $("reading-form").reset();
   $("reading-id").value = "";
-  $("reading-date").value = dateOffset(0, new Date().getHours());
+  $("reading-date").value = localDateTime();
   $("reading-form-title").textContent = "Add Reading";
   $("reading-form-panel").hidden = false;
   $("reading-form-panel").scrollIntoView({ behavior: "smooth" });
@@ -403,142 +706,263 @@ $("reading-form").addEventListener("submit", event => {
   event.preventDefault();
 
   const id = Number($("reading-id").value);
+  const sensorId = Number($("reading-sensor").value);
   const date = $("reading-date").value;
-  const item = {
-    sensorId: Number($("reading-sensor").value),
-    date,
-    pm25: Number($("reading-pm25").value),
-    pm10: Number($("reading-pm10").value),
-    co2: Number($("reading-co2").value),
-    aqi: Number($("reading-aqi").value)
-  };
+  const pm25 = Number($("reading-pm25").value);
+  const pm10 = Number($("reading-pm10").value);
+  const co2 = Number($("reading-co2").value);
+  const aqi = Number($("reading-aqi").value);
 
-  if (!sensorById(item.sensorId) || !date || !Number.isFinite(new Date(date).getTime()) ||
-      ![item.pm25, item.pm10, item.co2, item.aqi].every(Number.isFinite) ||
-      item.pm25 < 0 || item.pm10 < 0 || item.co2 < 0 ||
-      item.aqi < 0 || item.aqi > 500) {
-    showToast("Check the sensor, date, and measurement values.");
+  if (!sensorById(sensorId)) {
+    notify("Choose a valid sensor.");
     return;
   }
 
-  if (id) {
-    const existing = readings.find(r => r.id === id);
-    if (existing) Object.assign(existing, item);
-    resolvedAlerts.delete(id);
-    showToast("Reading updated in this demo.");
-  } else {
-    readings.push({ id: nextReadingId++, ...item });
-    showToast("Reading added in this demo.");
+  if (!date || Number.isNaN(new Date(date).getTime())) {
+    notify("Enter a valid date and time.");
+    return;
   }
 
+  if ([pm25, pm10, co2, aqi].some(v => !Number.isFinite(v) || v < 0) || aqi > 500) {
+    notify("Measurements must be non-negative and AQI must be 0–500.");
+    return;
+  }
+
+  const reading = {
+    id: id || db.nextReadingId++,
+    sensorId, date, pm25, pm10, co2, aqi
+  };
+
+  const index = db.readings.findIndex(r => Number(r.id) === id);
+  if (index >= 0) db.readings[index] = reading;
+  else db.readings.push(reading);
+
+  /*
+    Refreshing demo alerts recalculates them from all readings.
+    This demo therefore resets alert resolution status when readings
+    are saved. Production applications should manage alerts in MySQL.
+  */
+  rebuildAlerts();
+  saveData();
+
   $("reading-form-panel").hidden = true;
-  renderAll();
+  renderReadings();
+  renderDashboard();
+  renderAlerts();
+  renderReports();
+
+  notify(index >= 0 ? "Reading updated and alerts refreshed." : "Reading added and alerts checked.");
 });
 
 $("readings-table").addEventListener("click", event => {
-  const edit = event.target.closest("[data-edit-reading]");
-  const del = event.target.closest("[data-delete-reading]");
+  const editButton = event.target.closest("[data-edit-reading]");
+  const deleteButton = event.target.closest("[data-delete-reading]");
 
-  if (edit) {
-    const r = readings.find(item => item.id === Number(edit.dataset.editReading));
-    if (!r) return;
+  if (editButton) {
+    const reading = db.readings.find(r => Number(r.id) === Number(editButton.dataset.editReading));
+    if (!reading) return;
 
-    $("reading-id").value = r.id;
-    $("reading-sensor").value = String(r.sensorId);
-    $("reading-date").value = r.date;
-    $("reading-pm25").value = r.pm25;
-    $("reading-pm10").value = r.pm10;
-    $("reading-co2").value = r.co2;
-    $("reading-aqi").value = r.aqi;
+    $("reading-id").value = reading.id;
+    $("reading-sensor").value = reading.sensorId;
+    $("reading-date").value = reading.date;
+    $("reading-pm25").value = reading.pm25;
+    $("reading-pm10").value = reading.pm10;
+    $("reading-co2").value = reading.co2;
+    $("reading-aqi").value = reading.aqi;
     $("reading-form-title").textContent = "Edit Reading";
     $("reading-form-panel").hidden = false;
     $("reading-form-panel").scrollIntoView({ behavior: "smooth" });
   }
 
-  if (del) {
-    const id = Number(del.dataset.deleteReading);
-    if (!confirm("Delete this demo reading?")) return;
+  if (deleteButton) {
+    const id = Number(deleteButton.dataset.deleteReading);
+    if (!confirm("Delete this reading and its related demo alerts?")) return;
 
-    readings = readings.filter(r => r.id !== id);
-    resolvedAlerts.delete(id);
-    renderAll();
-    showToast("Reading deleted from this demo.");
+    db.readings = db.readings.filter(r => Number(r.id) !== id);
+    rebuildAlerts();
+    saveData();
+
+    renderReadings();
+    renderDashboard();
+    renderAlerts();
+    renderReports();
+    notify("Reading deleted.");
   }
 });
 
+/* ALERTS */
+
 function renderAlerts() {
-  const alerts = getAlerts();
+  const alerts = [...db.alerts].sort((a, b) => new Date(b.date) - new Date(a.date));
+
   $("total-alerts").textContent = alerts.length;
   $("unresolved-alerts").textContent = alerts.filter(a => a.status === "Open").length;
 
-  $("alerts-table").innerHTML = alerts.map(a => `
-    <tr>
-      <td>#${a.id}</td>
-      <td>${esc(sensorName(a.sensorId))}</td>
-      <td>${esc(sensorById(a.sensorId)?.location || "Unknown")}</td>
-      <td>${a.aqi}</td>
-      <td>${badge(a.severity, "severe")}</td>
-      <td>${esc(fmtDate(a.date))}</td>
-      <td>${badge(a.status, a.status.toLowerCase())}</td>
-      <td>${a.status === "Open"
-        ? `<button class="mini-btn" data-resolve="${a.id}">Resolve</button>`
-        : `<button class="mini-btn" data-reopen="${a.id}">Reopen</button>`}
-      </td>
-    </tr>
-  `).join("") || `<tr><td colspan="8" class="empty">No alerts. AQI alerts are generated above 150.</td></tr>`;
+  $("alerts-table").innerHTML = alerts.length
+    ? alerts.map(alert => {
+        const sensor = sensorById(alert.sensorId);
+        return `<tr>
+          <td>#${alert.id}</td>
+          <td>${escapeHTML(sensor?.name || "Deleted sensor")}</td>
+          <td>${escapeHTML(sensor?.location || "Unknown")}</td>
+          <td>${alert.readingId ? number(db.readings.find(r => Number(r.id) === Number(alert.readingId))?.aqi ?? "--") : "--"}</td>
+          <td><span class="badge ${alert.severity === "Severe" ? "badge-severe" : "badge-poor"}">${escapeHTML(alert.severity)}</span></td>
+          <td>${formatDate(alert.date)}</td>
+          <td>${statusBadge(alert.status)}</td>
+          <td>${alert.status === "Open"
+            ? `<button class="mini-btn" data-resolve-alert="${alert.id}">Resolve</button>`
+            : `<button class="mini-btn" data-reopen-alert="${alert.id}">Reopen</button>`}</td>
+        </tr>`;
+      }).join("")
+    : emptyRow(8, "No pollution alerts. Add a reading with AQI above 150 to test alerts.");
 }
 
 $("alerts-table").addEventListener("click", event => {
-  const resolve = event.target.closest("[data-resolve]");
-  const reopen = event.target.closest("[data-reopen]");
+  const resolve = event.target.closest("[data-resolve-alert]");
+  const reopen = event.target.closest("[data-reopen-alert]");
+  const button = resolve || reopen;
+  if (!button) return;
 
-  if (resolve) {
-    resolvedAlerts.add(Number(resolve.dataset.resolve));
-    showToast("Alert resolved in this demo.");
-  }
-  if (reopen) {
-    resolvedAlerts.delete(Number(reopen.dataset.reopen));
-    showToast("Alert reopened in this demo.");
-  }
-  renderAll();
+  const alert = db.alerts.find(a => Number(a.id) === Number(
+    button.dataset.resolveAlert || button.dataset.reopenAlert
+  ));
+
+  if (!alert) return;
+
+  alert.status = resolve ? "Resolved" : "Open";
+  saveData();
+  renderAlerts();
+  renderDashboard();
+  notify(resolve ? "Alert resolved." : "Alert reopened.");
 });
 
+$("refresh-alerts").addEventListener("click", () => {
+  rebuildAlerts();
+  renderAlerts();
+  renderDashboard();
+  notify("Alerts recalculated from current readings.");
+});
+
+/* REPORTS */
+
 function renderReports() {
-  $("total-readings").textContent = readings.length;
-  $("overall-average").textContent = readings.length
-    ? (readings.reduce((sum, r) => sum + r.aqi, 0) / readings.length).toFixed(1)
+  const groups = new Map();
+
+  db.sensors.forEach(sensor => {
+    if (!groups.has(sensor.location)) {
+      groups.set(sensor.location, { sensors: new Set(), readings: [] });
+    }
+    groups.get(sensor.location).sensors.add(sensor.id);
+  });
+
+  db.readings.forEach(reading => {
+    const sensor = sensorById(reading.sensorId);
+    if (!sensor) return;
+
+    if (!groups.has(sensor.location)) {
+      groups.set(sensor.location, { sensors: new Set(), readings: [] });
+    }
+    groups.get(sensor.location).readings.push(reading);
+  });
+
+  const locationData = [...groups.entries()].map(([location, group]) => ({
+    location,
+    sensors: group.sensors.size,
+    readings: group.readings.length,
+    highest: group.readings.length ? Math.max(...group.readings.map(r => Number(r.aqi))) : null,
+    average: group.readings.length
+      ? group.readings.reduce((sum, r) => sum + Number(r.aqi), 0) / group.readings.length
+      : null
+  })).sort((a, b) => (b.highest ?? -1) - (a.highest ?? -1));
+
+  const allAQI = db.readings.map(r => Number(r.aqi));
+
+  $("total-readings").textContent = db.readings.length;
+  $("overall-average").textContent = allAQI.length
+    ? number(allAQI.reduce((sum, v) => sum + v, 0) / allAQI.length)
     : "--";
+  $("worst-location").textContent = locationData.find(item => item.highest !== null)?.location || "--";
 
-  const locations = sensors.map(s => {
-    const items = readings.filter(r => r.sensorId === s.id);
-    return {
-      location: s.location,
-      sensorCount: 1,
-      count: items.length,
-      highest: items.length ? Math.max(...items.map(r => r.aqi)) : null,
-      average: items.length
-        ? (items.reduce((sum, r) => sum + r.aqi, 0) / items.length).toFixed(1)
-        : null
-    };
+  $("location-report").innerHTML = locationData.length
+    ? locationData.map(item => `<tr>
+      <td>${escapeHTML(item.location)}</td>
+      <td>${item.sensors}</td><td>${item.readings}</td>
+      <td>${item.highest === null ? "--" : aqiBadge(item.highest)}</td>
+      <td>${item.average === null ? "--" : number(item.average)}</td>
+    </tr>`).join("")
+    : emptyRow(5, "No location data available.");
+
+  const days = new Map();
+
+  db.readings.forEach(reading => {
+    const d = new Date(reading.date);
+    if (Number.isNaN(d.getTime())) return;
+
+    const key = [
+      d.getFullYear(),
+      String(d.getMonth() + 1).padStart(2, "0"),
+      String(d.getDate()).padStart(2, "0")
+    ].join("-");
+
+    if (!days.has(key)) days.set(key, []);
+    days.get(key).push(Number(reading.aqi));
   });
 
-  const populated = locations.filter(x => x.highest !== null);
-  const worst = populated.sort((a, b) => b.highest - a.highest)[0];
-  $("worst-location").textContent = worst ? worst.location : "--";
+  const daily = [...days.entries()].sort((a, b) => b[0].localeCompare(a[0]));
 
-  $("location-report").innerHTML = locations.map(l => `
-    <tr><td>${esc(l.location)}</td><td>${l.sensorCount}</td><td>${l.count}</td>
-    <td>${l.highest ?? "--"}</td><td>${l.average ?? "--"}</td></tr>
-  `).join("") || `<tr><td colspan="5" class="empty">No locations available.</td></tr>`;
+  $("daily-report").innerHTML = daily.length
+    ? daily.map(([date, values]) => `<tr>
+      <td>${escapeHTML(date)}</td><td>${values.length}</td>
+      <td>${number(values.reduce((sum, v) => sum + v, 0) / values.length)}</td>
+    </tr>`).join("")
+    : emptyRow(3, "No readings available.");
+}
 
-  const days = {};
-  readings.forEach(r => {
-    const day = r.date.slice(0, 10);
-    if (!days[day]) days[day] = [];
-    days[day].push(r.aqi);
+/* CSV EXPORT */
+
+$("export-csv").addEventListener("click", () => {
+  const headers = ["reading_id", "sensor_id", "sensor_name", "location", "recorded_at", "pm25", "pm10", "co2", "aqi", "category"];
+
+  const rows = sortedReadings().map(r => {
+    const sensor = sensorById(r.sensorId);
+    return [
+      r.id, r.sensorId, sensor?.name || "", sensor?.location || "",
+      r.date, r.pm25, r.pm10, r.co2, r.aqi, aqiCategory(r.aqi).name
+    ];
   });
 
-  $("daily-report").innerHTML = Object.keys(days).sort().reverse().map(day => {
-    const values = days[day];
-    const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
-    return `<tr
+  const csvCell = value => `"${String(value ?? "").replace(/"/g, '""')}"`;
+  const csv = [headers, ...rows].map(row => row.map(csvCell).join(",")).join("\r\n");
+
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "airwatch-readings.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  notify("CSV report exported.");
+});
+
+/* UTILITIES */
+
+function emptyRow(columns, message) {
+  return `<tr><td colspan="${columns}" class="empty">${escapeHTML(message)}</td></tr>`;
+}
+
+/* STARTUP */
+
+function startApp() {
+  // Seed missing alert data once when necessary.
+  if (!db.alerts.length && db.readings.some(r => Number(r.aqi) > ALERT_THRESHOLD)) {
+    rebuildAlerts();
+  }
+
+  const user = currentUser();
+  if (user && user.name && user.email) showApplication(user);
+  else showAuthentication();
+}
+
+startApp();
