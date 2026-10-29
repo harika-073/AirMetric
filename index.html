@@ -1,273 +1,230 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AirWatch | Smart Air Quality Monitoring</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101713">
+  <title>AetherIQ — Environmental Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+  <div id="loginScreen" class="login-screen">
+    <div class="login-art">
+      <div class="brand brand-large">
+        <div class="brand-symbol">✳</div>
+        <span>Aether<span class="brand-accent">IQ</span></span>
+      </div>
+      <div class="login-art-content">
+        <div class="eyebrow"><span class="live-dot"></span> ENVIRONMENTAL INTELLIGENCE</div>
+        <h1>See the air.<br>Understand <span>the future.</span></h1>
+        <p>A clearer perspective on the air we breathe. Monitor pollutants, explore environmental patterns and make every reading count.</p>
+        <div class="login-stat-row">
+          <div><strong>6+</strong><span>Pollutant metrics</span></div>
+          <div><strong>24/7</strong><span>Data monitoring</span></div>
+          <div><strong>1</strong><span>Healthier planet</span></div>
+        </div>
+      </div>
+      <div class="ambient-orb orb-one"></div>
+      <div class="ambient-orb orb-two"></div>
+      <div class="login-footer">A BETTER VIEW OF OUR ENVIRONMENT</div>
+    </div>
 
-  <!-- LOGIN -->
-  <section id="loginPage" class="login-page">
-    <div class="login-card">
-      <div class="logo">🌿 AirWatch</div>
-      <p class="muted">Smart Air Quality Monitoring System</p>
-      <h1 id="authTitle">Welcome Back</h1>
-      <p id="authDescription" class="muted">Login to open your dashboard.</p>
+    <div class="login-panel">
+      <div class="mobile-brand brand">
+        <div class="brand-symbol">✳</div>
+        <span>Aether<span class="brand-accent">IQ</span></span>
+      </div>
+      <div class="login-form-wrap">
+        <div class="login-heading">
+          <span class="eyebrow">WELCOME TO AETHERIQ</span>
+          <h2>Good to have<br>you <span>back.</span></h2>
+          <p>Sign in to access your environmental workspace.</p>
+        </div>
 
-      <form id="loginForm">
-        <label for="authRole">Login as</label>
-        <select id="authRole">
-          <option value="user">User</option>
-          <option value="admin">Admin</option>
-        </select>
+        <form id="loginForm">
+          <label for="email">Email address</label>
+          <input id="email" type="email" placeholder="you@example.com" autocomplete="username" required>
 
-        <label for="email">Email</label>
-        <input id="email" type="email" placeholder="Enter your email" required>
+          <label for="password">Password</label>
+          <div class="password-wrap">
+            <input id="password" type="password" placeholder="Enter your password" autocomplete="current-password" required>
+            <button type="button" class="password-toggle" id="togglePassword">Show</button>
+          </div>
 
-        <label for="password">Password</label>
-        <input id="password" type="password" placeholder="Enter your password" required>
+          <label for="loginRole">Sign in as</label>
+          <select id="loginRole">
+            <option value="user">User — View and explore</option>
+            <option value="admin">Administrator — Manage data</option>
+          </select>
 
-        <p id="loginError" class="error" role="alert"></p>
-        <button class="primary-btn" type="submit">Login</button>
-      </form>
+          <div id="loginError" class="form-error" role="alert"></div>
+          <button type="submit" class="btn btn-primary btn-full">Enter your workspace <span>↗</span></button>
+        </form>
 
-      <button id="toggleSignup" class="text-btn" type="button">
-        New user? Create an account
-      </button>
-
-      <div class="demo-info">
-        <strong>Admin demo login</strong>
-        <p>Email: admin@airwatch.com</p>
-        <p>Password: Admin@123</p>
+        <div class="demo-access">
+          <div class="demo-title"><span>✦</span> QUICK DEMO ACCESS</div>
+          <p>Try the interactive interface with these sample accounts.</p>
+          <button class="demo-account" type="button" data-role="admin">
+            <span class="demo-avatar">A</span>
+            <span><strong>Administrator</strong><small>admin@aetheriq.com</small></span>
+            <span class="demo-arrow">↗</span>
+          </button>
+          <button class="demo-account" type="button" data-role="user">
+            <span class="demo-avatar user-avatar">U</span>
+            <span><strong>Standard user</strong><small>user@aetheriq.com</small></span>
+            <span class="demo-arrow">↗</span>
+          </button>
+          <div class="demo-password">Demo password: <code>AirIQ@123</code></div>
+        </div>
+        <div class="login-legal">Educational project interface · Sample readings are illustrative</div>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- APPLICATION -->
-  <section id="dashboardPage" class="dashboard-page hidden">
-    <aside class="sidebar">
-      <div class="logo">🌿 AirWatch</div>
-      <p class="sidebar-label">MAIN MENU</p>
+  <div id="app" class="app-shell hidden">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand sidebar-brand" href="#" data-page="overview">
+        <div class="brand-symbol">✳</div>
+        <span>Aether<span class="brand-accent">IQ</span></span>
+      </a>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav class="nav-menu">
+        <button class="nav-item active" data-page="overview"><span class="nav-icon">◫</span> Overview</button>
+        <button class="nav-item" data-page="readings"><span class="nav-icon">⌁</span> Air readings</button>
+        <button class="nav-item" data-page="stations"><span class="nav-icon">◎</span> Monitoring stations</button>
+        <button class="nav-item" data-page="reports"><span class="nav-icon">▤</span> Reports & analytics</button>
+        <button class="nav-item" data-page="alerts"><span class="nav-icon">♧</span> Alerts <span id="alertBadge" class="nav-badge">0</span></button>
+      </nav>
 
-      <button class="nav-btn active" data-section="overview">▦ Overview</button>
-      <button class="nav-btn" data-section="readings">☷ Sensor Readings</button>
-      <button class="nav-btn" data-section="history">◷ Historical Analysis</button>
-      <button class="nav-btn" data-section="sensors">⌖ Sensors</button>
+      <div class="workspace-label admin-label">ADMINISTRATION</div>
+      <nav class="nav-menu admin-nav">
+        <button class="nav-item" data-page="users"><span class="nav-icon">♙</span> User management</button>
+      </nav>
 
       <div class="sidebar-bottom">
-        <p id="currentUser" class="muted">User</p>
-        <button id="logoutBtn" class="logout-btn">Logout</button>
+        <div class="sidebar-status"><span class="live-dot"></span><span><strong>Workspace active</strong><small>Environmental monitoring</small></span></div>
+        <button class="nav-item" id="logoutBtn"><span class="nav-icon">↪</span> Sign out</button>
+        <div class="sidebar-version">AETHERIQ <span>v1.0</span></div>
       </div>
     </aside>
 
-    <main class="main-content">
+    <main class="main-area">
       <header class="topbar">
-        <div>
-          <p class="eyebrow">SMART AIR QUALITY MONITORING</p>
-          <h1 id="pageTitle">Dashboard Overview</h1>
+        <div class="topbar-left">
+          <button id="menuToggle" class="icon-btn mobile-menu" aria-label="Toggle menu">☰</button>
+          <div class="breadcrumb">Workspace <span>/</span> <strong id="breadcrumbPage">Overview</strong></div>
         </div>
-        <span id="roleBadge" class="role-badge">USER</span>
+        <div class="topbar-right">
+          <div class="system-status"><span class="live-dot"></span> Monitoring workspace</div>
+          <button class="icon-btn" id="themeToggle" title="Toggle light/dark mode" aria-label="Toggle theme">☼</button>
+          <button class="profile-button" id="profileButton">
+            <span class="profile-avatar" id="profileAvatar">A</span>
+            <span class="profile-text"><strong id="profileName">Administrator</strong><small id="profileRole">Admin account</small></span>
+            <span class="profile-chevron">⌄</span>
+          </button>
+        </div>
       </header>
 
-      <!-- OVERVIEW -->
-      <section id="overviewSection" class="content-section">
-        <div class="welcome-row">
-          <div>
-            <h2>Air Quality Overview</h2>
-            <p class="muted">Live dashboard view of the records entered into this demo.</p>
+      <div class="page-container">
+        <section class="page-section active" id="page-overview">
+          <div class="page-heading">
+            <div><div class="eyebrow">YOUR ENVIRONMENT, AT A GLANCE</div><h1>Air quality <span>overview.</span></h1><p>Understand today's air. Discover what the data is telling you.</p></div>
+            <div class="heading-actions"><span class="date-pill" id="currentDate"></span><button class="btn btn-primary admin-only" data-action="add-reading">＋ Add reading</button></div>
           </div>
-          <button class="primary-btn" data-go="readings">+ Add Reading</button>
-        </div>
 
-        <div class="stats-grid">
-          <article class="stat-card">
-            <p>Latest AQI</p>
-            <strong id="latestAqi">--</strong>
-            <span id="aqiStatus" class="status-badge">No data</span>
-          </article>
-          <article class="stat-card">
-            <p>Latest PM2.5</p>
-            <strong id="latestPm25">--</strong>
-            <small>µg/m³</small>
-          </article>
-          <article class="stat-card">
-            <p>Latest PM10</p>
-            <strong id="latestPm10">--</strong>
-            <small>µg/m³</small>
-          </article>
-          <article class="stat-card">
-            <p>Total Readings</p>
-            <strong id="totalReadings">0</strong>
-            <small>Saved records</small>
-          </article>
-        </div>
+          <div class="welcome-strip"><div class="welcome-icon">✳</div><div><strong id="welcomeText">Welcome to your environmental workspace.</strong><p>Your monitoring overview, historical readings and environmental reports in one place.</p></div><span class="welcome-decoration">AQI</span></div>
 
-        <div class="panel">
-          <div class="panel-heading">
-            <div>
-              <h3>AQI Trend</h3>
-              <p class="muted">Based on saved sensor readings</p>
-            </div>
-            <button class="secondary-btn" data-go="history">Open History</button>
+          <div class="section-label-row"><span>LIVE MONITORING SNAPSHOT</span><span class="muted-small">Based on available readings</span></div>
+          <div class="metric-grid">
+            <article class="metric-card featured-metric"><div class="metric-top"><span>Air quality index</span><span class="metric-icon">◉</span></div><div class="metric-main"><strong id="aqiValue">42</strong><span id="aqiStatus" class="status-pill status-good">Good</span></div><div class="metric-foot"><span id="aqiDescription">Satisfactory air quality</span><span class="metric-spark">↗</span></div><div class="aqi-meter"><span id="aqiMeter"></span></div></article>
+            <article class="metric-card"><div class="metric-top"><span>PM2.5</span><span class="metric-icon icon-mint">◌</span></div><div class="metric-main"><strong id="pm25Value">8.4</strong><span class="metric-unit">µg/m³</span></div><div class="metric-foot"><span>Fine particulate matter</span><span class="metric-trend">Latest</span></div><div class="mini-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+            <article class="metric-card"><div class="metric-top"><span>PM10</span><span class="metric-icon icon-blue">◌</span></div><div class="metric-main"><strong id="pm10Value">16.2</strong><span class="metric-unit">µg/m³</span></div><div class="metric-foot"><span>Coarse particulate matter</span><span class="metric-trend">Latest</span></div><div class="mini-bars blue-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+            <article class="metric-card"><div class="metric-top"><span>Carbon monoxide</span><span class="metric-icon icon-purple">◌</span></div><div class="metric-main"><strong id="coValue">0.3</strong><span class="metric-unit">mg/m³</span></div><div class="metric-foot"><span>CO concentration</span><span class="metric-trend">Latest</span></div><div class="mini-bars purple-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
           </div>
-          <canvas id="aqiChart" height="220"></canvas>
-          <p id="chartEmpty" class="empty-message">Add readings to display the chart.</p>
-        </div>
 
-        <div class="panel">
-          <h3>Recent Readings</h3>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr><th>Date</th><th>Sensor</th><th>Location</th><th>AQI</th><th>Status</th></tr>
-              </thead>
-              <tbody id="recentTableBody"></tbody>
-            </table>
+          <div class="content-grid">
+            <article class="panel trend-panel">
+              <div class="panel-heading"><div><div class="section-kicker">POLLUTION ANALYTICS</div><h3>Pollution trends</h3><p>Explore how pollutant levels change over time.</p></div><select id="chartRange" class="compact-select"><option value="7">Last 7 days</option><option value="14">Last 14 days</option><option value="30">Last 30 days</option></select></div>
+              <div class="chart-legend"><span><i class="legend-dot mint-dot"></i> PM2.5</span><span><i class="legend-dot blue-dot"></i> PM10</span><span><i class="legend-dot purple-dot"></i> NO₂</span></div>
+              <div class="chart-wrap"><canvas id="trendChart" aria-label="Pollutant trends chart"></canvas></div>
+              <div class="chart-foot"><span>Concentrations from stored readings</span><span>µg/m³ where applicable</span></div>
+            </article>
+            <article class="panel station-panel"><div class="panel-heading"><div><div class="section-kicker">NETWORK OVERVIEW</div><h3>Monitoring stations</h3><p>Your reporting locations</p></div><span class="panel-count" id="stationCount">0</span></div><div id="stationPreview" class="station-list"></div><button class="text-link" data-page="stations">Explore all stations <span>→</span></button></article>
           </div>
-          <p id="recentEmpty" class="empty-message">No readings have been added.</p>
-        </div>
-      </section>
 
-      <!-- READINGS PAGE -->
-      <section id="readingsSection" class="content-section hidden">
-        <div class="section-intro">
-          <h2>Sensor Readings</h2>
-          <p class="muted">Add, search and delete air quality records.</p>
-        </div>
-
-        <div class="panel">
-          <h3>Add New Reading</h3>
-          <form id="readingForm" class="reading-form">
-            <div><label for="sensorId">Sensor ID</label><input id="sensorId" placeholder="SENSOR-01" required></div>
-            <div><label for="location">Location</label><input id="location" placeholder="College Campus" required></div>
-            <div><label for="aqi">AQI (0–500)</label><input id="aqi" type="number" min="0" max="500" required></div>
-            <div><label for="pm25">PM2.5 (µg/m³)</label><input id="pm25" type="number" min="0" step="0.1" required></div>
-            <div><label for="pm10">PM10 (µg/m³)</label><input id="pm10" type="number" min="0" step="0.1" required></div>
-            <div><label for="temperature">Temperature (°C)</label><input id="temperature" type="number" step="0.1" required></div>
-            <div><label for="humidity">Humidity (%)</label><input id="humidity" type="number" min="0" max="100" required></div>
-            <div><label for="readingDate">Date and time</label><input id="readingDate" type="datetime-local" required></div>
-            <div class="form-action"><button class="primary-btn" type="submit">Save Reading</button></div>
-          </form>
-          <p id="readingMessage" class="success-message" role="status"></p>
-        </div>
-
-        <div class="panel">
-          <div class="panel-heading">
-            <h3>All Readings</h3>
-            <input id="searchReadings" class="search-input" placeholder="Search sensor or location">
+          <div class="content-grid lower-grid">
+            <article class="panel recent-panel"><div class="panel-heading"><div><div class="section-kicker">LATEST ACTIVITY</div><h3>Recent readings</h3><p>The latest recorded environmental observations.</p></div><button class="text-link" data-page="readings">View all →</button></div><div class="table-scroll"><table><thead><tr><th>STATION / POLLUTANT</th><th>VALUE</th><th>STATUS</th><th>RECORDED AT</th></tr></thead><tbody id="recentReadingsBody"></tbody></table></div></article>
+            <article class="panel distribution-panel"><div class="panel-heading"><div><div class="section-kicker">AIR QUALITY PROFILE</div><h3>Quality distribution</h3><p>Readings by AQI category</p></div></div><div id="distributionList" class="distribution-list"></div><div class="distribution-note">Calculated from available AQI records.</div></article>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr><th>Date</th><th>Sensor</th><th>Location</th><th>AQI</th><th>PM2.5</th><th>PM10</th><th>Temp.</th><th>Humidity</th><th>Action</th></tr>
-              </thead>
-              <tbody id="readingsTableBody"></tbody>
-            </table>
-          </div>
-          <p id="readingsEmpty" class="empty-message">No matching readings.</p>
-        </div>
-      </section>
+        </section>
 
-      <!-- HISTORY PAGE: ADD READINGS HERE TOO -->
-      <section id="historySection" class="content-section hidden">
-        <div class="section-intro">
-          <h2>Historical Analysis</h2>
-          <p class="muted">Add a new historical reading or analyse existing records.</p>
-        </div>
+        <section class="page-section" id="page-readings">
+          <div class="page-heading"><div><div class="eyebrow">ENVIRONMENTAL DATA</div><h1>Air <span>readings.</span></h1><p>Review, filter and maintain pollutant measurements.</p></div><button class="btn btn-primary admin-only" data-action="add-reading">＋ Add new reading</button></div>
+          <div class="toolbar"><div class="search-box"><span>⌕</span><input id="readingSearch" type="search" placeholder="Search station, pollutant or status..."></div><select id="pollutantFilter" class="filter-select"><option value="">All pollutants</option><option>PM2.5</option><option>PM10</option><option>CO</option><option>NO2</option><option>SO2</option><option>O3</option></select><select id="statusFilter" class="filter-select"><option value="">All statuses</option><option>Good</option><option>Moderate</option><option>Poor</option><option>Unhealthy</option></select><button id="exportReadings" class="btn btn-secondary">↓ Export CSV</button></div>
+          <article class="panel data-panel"><div class="panel-heading"><div><h3>Recorded measurements</h3><p id="readingCountText">0 records</p></div><span class="database-label"><span class="live-dot"></span> Workspace records</span></div><div class="table-scroll"><table><thead><tr><th>RECORD / STATION</th><th>POLLUTANT</th><th>VALUE</th><th>AQI / STATUS</th><th>DATE & TIME</th><th class="admin-only">ACTIONS</th></tr></thead><tbody id="readingsBody"></tbody></table></div><div id="readingsEmpty" class="empty-state hidden"><span>⌁</span><h3>No readings found</h3><p>Try a different filter or add a new reading.</p></div></article>
+        </section>
 
-        <div class="panel">
-          <h3>Add Historical Reading</h3>
-          <form id="historyReadingForm" class="reading-form">
-            <div><label for="historySensorId">Sensor ID</label><input id="historySensorId" required placeholder="SENSOR-01"></div>
-            <div><label for="historyLocation">Location</label><input id="historyLocation" required placeholder="College Campus"></div>
-            <div><label for="historyAqi">AQI (0–500)</label><input id="historyAqi" type="number" min="0" max="500" required></div>
-            <div><label for="historyPm25">PM2.5 (µg/m³)</label><input id="historyPm25" type="number" min="0" step="0.1" required></div>
-            <div><label for="historyPm10">PM10 (µg/m³)</label><input id="historyPm10" type="number" min="0" step="0.1" required></div>
-            <div><label for="historyTemperature">Temperature (°C)</label><input id="historyTemperature" type="number" step="0.1" required></div>
-            <div><label for="historyHumidity">Humidity (%)</label><input id="historyHumidity" type="number" min="0" max="100" required></div>
-            <div><label for="historyDate">Historical date and time</label><input id="historyDate" type="datetime-local" required></div>
-            <div class="form-action"><button class="primary-btn" type="submit">Add to History</button></div>
-          </form>
-          <p id="historyMessage" class="success-message" role="status"></p>
-        </div>
+        <section class="page-section" id="page-stations">
+          <div class="page-heading"><div><div class="eyebrow">MONITORING NETWORK</div><h1>Monitoring <span>stations.</span></h1><p>Explore your locations and their latest observations.</p></div><button class="btn btn-primary admin-only" data-action="add-station">＋ Add station</button></div>
+          <div id="stationCards" class="station-cards"></div>
+        </section>
 
-        <div class="stats-grid history-stats">
-          <article class="stat-card"><p>Average AQI</p><strong id="averageAqi">--</strong></article>
-          <article class="stat-card"><p>Highest AQI</p><strong id="highestAqi">--</strong></article>
-          <article class="stat-card"><p>Lowest AQI</p><strong id="lowestAqi">--</strong></article>
-        </div>
+        <section class="page-section" id="page-reports">
+          <div class="page-heading"><div><div class="eyebrow">DATA-DRIVEN INSIGHTS</div><h1>Reports & <span>analytics.</span></h1><p>Turn environmental measurements into meaningful insights.</p></div><button class="btn btn-primary" id="generateReport">↗ Generate report</button></div>
+          <div class="report-filter panel"><div><label for="reportFrom">From date</label><input type="date" id="reportFrom"></div><div><label for="reportTo">To date</label><input type="date" id="reportTo"></div><div><label for="reportStation">Monitoring station</label><select id="reportStation"><option value="">All stations</option></select></div><button id="applyReport" class="btn btn-primary">Apply filters</button></div>
+          <div class="metric-grid report-metrics"><article class="metric-card"><div class="metric-top">Total measurements</div><div class="metric-main"><strong id="reportTotal">0</strong></div><div class="metric-foot">Records in selected period</div></article><article class="metric-card"><div class="metric-top">Average AQI</div><div class="metric-main"><strong id="reportAvg">—</strong></div><div class="metric-foot">Across available AQI readings</div></article><article class="metric-card"><div class="metric-top">Stations reporting</div><div class="metric-main"><strong id="reportStations">0</strong></div><div class="metric-foot">Distinct monitoring stations</div></article><article class="metric-card"><div class="metric-top">Elevated readings</div><div class="metric-main"><strong id="reportElevated">0</strong></div><div class="metric-foot">Moderate or higher in this demo</div></article></div>
+          <article class="panel report-chart-panel"><div class="panel-heading"><div><div class="section-kicker">PERIOD ANALYSIS</div><h3>Measurement history</h3><p>Readings included in your report.</p></div><button class="btn btn-secondary" id="exportReport">↓ Export report CSV</button></div><div class="chart-wrap report-chart-wrap"><canvas id="reportChart"></canvas></div></article>
+          <article class="panel saved-reports"><div class="panel-heading"><div><h3>Report history</h3><p>Reports generated during this browser session.</p></div></div><div id="reportHistory"></div></article>
+        </section>
 
-        <div class="panel">
-          <div class="panel-heading">
-            <h3>Historical AQI Chart</h3>
-            <button id="historyExportBtn" class="secondary-btn">Export CSV</button>
-          </div>
-          <canvas id="historyChart" height="240"></canvas>
-          <p id="historyEmpty" class="empty-message">No historical readings available.</p>
-        </div>
+        <section class="page-section" id="page-alerts">
+          <div class="page-heading"><div><div class="eyebrow">ENVIRONMENTAL WATCH</div><h1>Pollution <span>alerts.</span></h1><p>Review readings that may require attention.</p></div><button class="btn btn-secondary" id="refreshAlerts">↻ Refresh alerts</button></div>
+          <div class="alert-summary-grid"><div class="panel alert-summary"><span class="alert-summary-icon">◎</span><div><strong id="alertTotal">0</strong><span>Total alerts</span></div></div><div class="panel alert-summary"><span class="alert-summary-icon amber">◈</span><div><strong id="alertElevated">0</strong><span>Elevated readings</span></div></div></div>
+          <div id="alertsList" class="alerts-list"></div>
+        </section>
 
-        <div class="panel">
-          <h3>Historical Records</h3>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Date</th><th>Sensor</th><th>Location</th><th>AQI</th><th>Status</th></tr></thead>
-              <tbody id="historyTableBody"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="panel">
-          <h3>Analysis Summary</h3>
-          <p id="historySummary" class="summary-text">No data available yet.</p>
-        </div>
-      </section>
-
-      <!-- SENSORS PAGE: ADD SENSOR AND READINGS HERE TOO -->
-      <section id="sensorsSection" class="content-section hidden">
-        <div class="section-intro">
-          <h2>Sensors</h2>
-          <p class="muted">Register sensors and add readings directly from this page.</p>
-        </div>
-
-        <div class="panel">
-          <h3>Register New Sensor</h3>
-          <form id="sensorForm" class="reading-form">
-            <div><label for="newSensorId">Sensor ID</label><input id="newSensorId" required placeholder="SENSOR-02"></div>
-            <div><label for="newSensorLocation">Sensor Location</label><input id="newSensorLocation" required placeholder="Library Block"></div>
-            <div class="form-action"><button class="primary-btn" type="submit">Register Sensor</button></div>
-          </form>
-          <p id="sensorMessage" class="success-message" role="status"></p>
-        </div>
-
-        <div class="panel">
-          <h3>Add Reading from Sensors</h3>
-          <form id="sensorReadingForm" class="reading-form">
-            <div><label for="sensorReadingId">Sensor ID</label><input id="sensorReadingId" required placeholder="SENSOR-01"></div>
-            <div><label for="sensorReadingLocation">Location</label><input id="sensorReadingLocation" required placeholder="College Campus"></div>
-            <div><label for="sensorReadingAqi">AQI (0–500)</label><input id="sensorReadingAqi" type="number" min="0" max="500" required></div>
-            <div><label for="sensorReadingPm25">PM2.5 (µg/m³)</label><input id="sensorReadingPm25" type="number" min="0" step="0.1" required></div>
-            <div><label for="sensorReadingPm10">PM10 (µg/m³)</label><input id="sensorReadingPm10" type="number" min="0" step="0.1" required></div>
-            <div><label for="sensorReadingTemp">Temperature (°C)</label><input id="sensorReadingTemp" type="number" step="0.1" required></div>
-            <div><label for="sensorReadingHumidity">Humidity (%)</label><input id="sensorReadingHumidity" type="number" min="0" max="100" required></div>
-            <div><label for="sensorReadingDate">Date and time</label><input id="sensorReadingDate" type="datetime-local" required></div>
-            <div class="form-action"><button class="primary-btn" type="submit">Save Sensor Reading</button></div>
-          </form>
-          <p id="sensorReadingMessage" class="success-message" role="status"></p>
-        </div>
-
-        <div class="panel">
-          <h3>Registered Sensors</h3>
-          <div id="sensorCards" class="sensor-grid"></div>
-          <p id="sensorsEmpty" class="empty-message">No sensors registered yet.</p>
-        </div>
-      </section>
-
-      <footer>AirWatch Demo · Records are stored in this browser.</footer>
+        <section class="page-section" id="page-users">
+          <div class="page-heading"><div><div class="eyebrow">ACCESS CONTROL</div><h1>User <span>management.</span></h1><p>Review the demo accounts and their access levels.</p></div><button class="btn btn-primary" id="addUserBtn">＋ Add user</button></div>
+          <div class="notice-strip"><span>ⓘ</span><p>These accounts are for frontend demonstration only. Real account creation, password hashing and role enforcement must be handled by the PHP backend.</p></div>
+          <article class="panel data-panel"><div class="panel-heading"><div><h3>Workspace accounts</h3><p>Sample accounts for the interface preview.</p></div></div><div class="table-scroll"><table><thead><tr><th>ACCOUNT</th><th>EMAIL</th><th>ROLE</th><th>ACCESS</th></tr></thead><tbody id="usersBody"></tbody></table></div></article>
+        </section>
+      </div>
+      <footer class="app-footer"><span>✳ AetherIQ <span class="footer-muted">Environmental Intelligence</span></span><span>Sample interface · Not a live sensor feed</span></footer>
     </main>
-  </section>
+  </div>
 
+  <div id="modalBackdrop" class="modal-backdrop hidden">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-heading"><div><div class="section-kicker">WORKSPACE MANAGEMENT</div><h2 id="modalTitle">Add reading</h2></div><button id="closeModal" class="icon-btn" aria-label="Close dialog">×</button></div>
+      <form id="readingForm">
+        <input type="hidden" id="editReadingId">
+        <div class="form-grid">
+          <div class="form-field"><label for="readingStation">Monitoring station</label><select id="readingStation" required></select></div>
+          <div class="form-field"><label for="readingPollutant">Pollutant</label><select id="readingPollutant" required><option value="PM2.5">PM2.5</option><option value="PM10">PM10</option><option value="CO">CO</option><option value="NO2">NO₂</option><option value="SO2">SO₂</option><option value="O3">O₃</option></select></div>
+          <div class="form-field"><label for="readingValue">Measured value</label><input type="number" id="readingValue" min="0" step="any" placeholder="e.g. 12.5" required></div>
+          <div class="form-field"><label for="readingUnit">Measurement unit</label><select id="readingUnit"><option value="µg/m³">µg/m³</option><option value="mg/m³">mg/m³</option><option value="ppm">ppm</option></select></div>
+          <div class="form-field"><label for="readingAQI">AQI (optional)</label><input type="number" id="readingAQI" min="0" max="500" placeholder="0–500"></div>
+          <div class="form-field"><label for="readingTime">Recorded date & time</label><input type="datetime-local" id="readingTime" required></div>
+          <div class="form-field full-field"><label for="readingNotes">Notes / remarks</label><textarea id="readingNotes" rows="3" placeholder="Add observation notes..."></textarea></div>
+        </div>
+        <div id="modalError" class="form-error"></div>
+        <div class="modal-actions"><button type="button" class="btn btn-secondary" id="cancelModal">Cancel</button><button type="submit" class="btn btn-primary">Save reading <span>↗</span></button></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="stationModalBackdrop" class="modal-backdrop hidden">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="stationModalTitle">
+      <div class="modal-heading"><div><div class="section-kicker">MONITORING NETWORK</div><h2 id="stationModalTitle">Add station</h2></div><button id="closeStationModal" class="icon-btn" aria-label="Close dialog">×</button></div>
+      <form id="stationForm"><div class="form-field"><label for="stationName">Station name</label><input id="stationName" required maxlength="80" placeholder="e.g. Central Park Station"></div><div class="form-field"><label for="stationLocation">Location</label><input id="stationLocation" required maxlength="120" placeholder="City or area"></div><div class="form-field"><label for="stationType">Station type</label><select id="stationType"><option>Urban</option><option>Industrial</option><option>Residential</option><option>Traffic</option><option>Background</option></select></div><div id="stationModalError" class="form-error"></div><div class="modal-actions"><button type="button" class="btn btn-secondary" id="cancelStationModal">Cancel</button><button type="submit" class="btn btn-primary">Save station ↗</button></div></form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status"></div>
   <script src="script.js"></script>
 </body>
 </html>
