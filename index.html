@@ -7,244 +7,260 @@
   <title>AirWatch | Smart Air Quality Monitoring</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="script.js" defer></script>
 </head>
 <body>
-
-  <!-- LOGIN / REGISTRATION -->
-  <section id="auth-screen" class="auth-screen">
+  <div id="authScreen" class="auth-screen">
     <div class="auth-brand">
-      <div class="brand-icon">A</div>
-      <div><strong>AirWatch</strong><small>SMART AIR QUALITY MONITORING</small></div>
+      <div class="brand-icon">◉</div>
+      <h1>AirWatch</h1>
+      <p>Smarter air. Healthier lives.</p>
     </div>
 
     <div class="auth-card">
-      <div class="auth-symbol">🌿</div>
-      <p class="eyebrow">ENVIRONMENTAL INTELLIGENCE</p>
-      <h1 id="auth-title">Welcome back</h1>
-      <p id="auth-subtitle">Sign in to monitor air quality and sensor readings.</p>
+      <div class="auth-tabs">
+        <button class="tab active" data-auth="login">Login</button>
+        <button class="tab" data-auth="register">Create account</button>
+      </div>
 
-      <form id="auth-form">
-        <label id="name-wrap" hidden>Full name
-          <input id="auth-name" autocomplete="name" maxlength="80" placeholder="Your name">
-        </label>
-        <label>Email address
-          <input id="auth-email" type="email" autocomplete="email" required placeholder="you@example.com">
-        </label>
-        <label>Password
-          <input id="auth-password" type="password" autocomplete="current-password" required minlength="6" placeholder="At least 6 characters">
-        </label>
-        <button class="btn btn-primary full-width" id="auth-submit" type="submit">Sign In</button>
+      <form id="loginForm">
+        <h2>Welcome back</h2>
+        <p class="muted">Sign in to monitor air quality.</p>
+
+        <label for="loginRole">Account type</label>
+        <select id="loginRole" required>
+          <option value="user">User</option>
+          <option value="admin">Administrator</option>
+        </select>
+
+        <label for="loginEmail">Email address</label>
+        <input id="loginEmail" type="email" placeholder="you@example.com" required>
+
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" type="password" placeholder="Enter password" required>
+
+        <button class="primary-btn full" type="submit">Sign in</button>
+        <p class="form-note">Frontend preview: connect the PHP backend to enable real authentication.</p>
       </form>
 
-      <p class="auth-switch"><span id="auth-switch-text">New to AirWatch?</span>
-        <button id="auth-switch" class="text-button" type="button">Create account</button>
-      </p>
-      <div class="demo-note">
-        <strong>Demo access</strong>
-        <p>Demo email: demo@airwatch.test</p>
-        <p>Demo password: AirWatch123</p>
-        <button id="demo-login" type="button" class="btn btn-outline full-width">Use Demo Account</button>
+      <form id="registerForm" class="hidden">
+        <h2>Create your account</h2>
+        <p class="muted">Start tracking your environment.</p>
+
+        <label for="registerName">Full name</label>
+        <input id="registerName" type="text" placeholder="Your name" required>
+
+        <label for="registerEmail">Email address</label>
+        <input id="registerEmail" type="email" placeholder="you@example.com" required>
+
+        <label for="registerPassword">Password</label>
+        <input id="registerPassword" type="password" minlength="10"
+               placeholder="At least 10 characters" required>
+
+        <button class="primary-btn full" type="submit">Create account</button>
+        <p class="form-note">New accounts will be saved in MySQL after backend integration.</p>
+      </form>
+
+      <div class="demo-box">
+        <strong>Preview the dashboard</strong>
+        <p>Explore the frontend without creating an account.</p>
+        <div class="demo-buttons">
+          <button id="demoUser" class="secondary-btn">User preview</button>
+          <button id="demoAdmin" class="secondary-btn">Admin preview</button>
+        </div>
       </div>
-      <p class="auth-disclaimer">Demonstration authentication only. Do not use real or sensitive passwords.</p>
+      <p id="authMessage" class="message" role="status"></p>
     </div>
-    <p class="auth-footer">AirWatch · Monitor Today, Breathe Better Tomorrow</p>
-  </section>
+  </div>
 
-  <!-- APPLICATION -->
-  <div id="app" class="layout" hidden>
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-icon">A</div>
-        <div><strong>AirWatch</strong><small>ENVIRONMENTAL INTELLIGENCE</small></div>
+  <div id="app" class="app hidden">
+    <aside class="sidebar" id="sidebar">
+      <div class="side-brand">
+        <span class="brand-icon">◉</span>
+        <span>AirWatch</span>
       </div>
 
-      <div class="menu-label">WORKSPACE</div>
-      <button class="nav active" data-page="dashboard">▦ <span>Dashboard</span></button>
-      <button class="nav" data-page="sensors">◉ <span>Sensor Management</span></button>
-      <button class="nav" data-page="readings">▤ <span>Historical Readings</span></button>
-      <button class="nav" data-page="alerts">⚠ <span>Pollution Alerts</span></button>
-      <button class="nav" data-page="reports">▥ <span>Reports & Analytics</span></button>
-      <button class="nav" data-page="docs">▣ <span>DBMS Documentation</span></button>
+      <div class="workspace-label">WORKSPACE</div>
+      <button class="nav-link active" data-page="overview">▦ <span>Overview</span></button>
+      <button class="nav-link" data-page="sensors">⌁ <span>Sensors</span></button>
+      <button class="nav-link" data-page="history">◷ <span>Historical data</span></button>
+      <button class="nav-link" data-page="alerts">♧ <span>Alerts</span></button>
+      <button class="nav-link" data-page="reports">▤ <span>Reports</span></button>
+
+      <div id="adminNavigation" class="hidden">
+        <div class="workspace-label">ADMINISTRATION</div>
+        <button class="nav-link" data-page="admin">⚙ <span>Admin panel</span></button>
+      </div>
 
       <div class="sidebar-bottom">
-        <span class="status-dot"></span>
-        <div><strong>Demo Mode</strong><small>Browser-stored data</small></div>
+        <div class="online-dot"></div>
+        <span>AirWatch preview</span>
       </div>
     </aside>
 
     <main class="main">
       <header class="topbar">
-        <div>
-          <div class="breadcrumb">AIRWATCH / <span id="crumb">DASHBOARD</span></div>
-          <h1 id="page-title">Air Quality Dashboard</h1>
-        </div>
+        <button id="menuButton" class="icon-btn" aria-label="Toggle navigation">☰</button>
+        <div class="breadcrumb">Workspace <span>/</span> <strong id="pageBreadcrumb">Overview</strong></div>
         <div class="top-actions">
-          <span class="live-label"><i></i> DEMO MODE</span>
-          <div class="avatar" id="user-avatar">AW</div>
-          <button class="btn btn-outline" id="logout">Log out</button>
+          <button class="icon-btn" data-goto="alerts" aria-label="View alerts">♧</button>
+          <div class="avatar" id="avatar">U</div>
+          <div class="profile-info">
+            <strong id="profileName">Guest User</strong>
+            <small id="profileRole">User preview</small>
+          </div>
+          <button id="logoutButton" class="secondary-btn">Exit preview</button>
         </div>
       </header>
 
-      <section class="page active" id="dashboard">
-        <div class="welcome">
-          <div>
-            <p class="eyebrow">ENVIRONMENTAL OVERVIEW</p>
-            <h2>Understand the air you breathe.</h2>
-            <p>Welcome, <strong id="welcome-user">User</strong>. Explore air quality observations and trends.</p>
-            <p class="small-note">Sample data for demonstration — not live sensor measurements.</p>
-          </div>
-          <div class="welcome-icon">🌿</div>
-        </div>
-
-        <div class="stats-grid">
-          <article class="stat-card"><div class="stat-top">Total Sensors <span class="stat-icon blue">◉</span></div><div class="stat-value" id="total-sensors">0</div><div class="stat-foot">Registered stations</div></article>
-          <article class="stat-card"><div class="stat-top">Active Sensors <span class="stat-icon green">✓</span></div><div class="stat-value" id="active-sensors">0</div><div class="stat-foot">Marked active</div></article>
-          <article class="stat-card"><div class="stat-top">Latest AQI <span class="stat-icon orange">◈</span></div><div class="stat-value" id="latest-aqi">--</div><div class="stat-foot" id="aqi-status">No readings</div></article>
-          <article class="stat-card"><div class="stat-top">Open Alerts <span class="stat-icon red">!</span></div><div class="stat-value" id="open-alerts">0</div><div class="stat-foot">Require attention</div></article>
-        </div>
-
-        <div class="chart-grid">
-          <article class="panel chart-panel">
-            <div class="panel-heading"><div><h3>AQI Trend</h3><p>Latest recorded observations</p></div><span class="pill">Historical</span></div>
-            <div class="chart-wrap"><canvas id="aqiChart"></canvas></div>
-          </article>
-          <article class="panel chart-panel">
-            <div class="panel-heading"><div><h3>Pollutant Comparison</h3><p>PM2.5, PM10 and CO₂</p></div></div>
-            <div class="chart-wrap"><canvas id="pollutionChart"></canvas></div>
-          </article>
-        </div>
-
-        <article class="panel">
-          <div class="panel-heading"><div><h3>Latest Readings</h3><p>Most recently recorded observations</p></div><button class="btn btn-outline" data-goto="readings">View history →</button></div>
-          <div class="table-scroll"><table><thead><tr><th>Sensor</th><th>Location</th><th>AQI</th><th>PM2.5</th><th>PM10</th><th>Recorded At</th></tr></thead><tbody id="latest-table"></tbody></table></div>
-        </article>
-      </section>
-
-      <section class="page" id="sensors">
-        <div class="page-intro"><div><h2>Sensor Management</h2><p>Add, edit, search and remove monitoring stations.</p></div><button class="btn btn-primary" id="add-sensor">+ Add Sensor</button></div>
-        <div class="toolbar"><input id="sensor-search" placeholder="Search sensor or location..."><select id="sensor-status-filter"><option value="">All statuses</option><option>Active</option><option>Inactive</option><option>Maintenance</option></select></div>
-        <article class="panel"><div class="table-scroll"><table><thead><tr><th>ID</th><th>Sensor</th><th>Location</th><th>Coordinates</th><th>Status</th><th>Actions</th></tr></thead><tbody id="sensors-table"></tbody></table></div></article>
-        <div class="panel form-panel" id="sensor-form-panel" hidden>
-          <h3 id="sensor-form-title">Add Sensor</h3>
-          <form id="sensor-form"><input type="hidden" id="sensor-id">
-            <div class="form-grid">
-              <label>Sensor name<input id="sensor-name" maxlength="100" required></label>
-              <label>Location<input id="sensor-location" maxlength="150" required></label>
-              <label>Latitude<input id="sensor-lat" type="number" min="-90" max="90" step="any" required></label>
-              <label>Longitude<input id="sensor-lon" type="number" min="-180" max="180" step="any" required></label>
-              <label>Status<select id="sensor-status"><option>Active</option><option>Inactive</option><option>Maintenance</option></select></label>
+      <div class="page-wrap">
+        <section id="page-overview" class="page active-page">
+          <div class="welcome-row">
+            <div>
+              <div class="eyebrow">AIR QUALITY INTELLIGENCE</div>
+              <h1>Good day, <span id="welcomeName">there</span> <span class="wave">✦</span></h1>
+              <p class="muted">Here is your environmental monitoring overview.</p>
             </div>
-            <div class="form-actions"><button class="btn btn-primary">Save Sensor</button><button type="button" class="btn btn-outline" id="cancel-sensor">Cancel</button></div>
-          </form>
-        </div>
-      </section>
-
-      <section class="page" id="readings">
-        <div class="page-intro"><div><h2>Historical Readings</h2><p>Filter, add, edit and delete recorded observations.</p></div><button class="btn btn-primary" id="add-reading">+ Add Reading</button></div>
-        <div class="panel filters">
-          <label>Sensor<select id="reading-sensor-filter"><option value="">All sensors</option></select></label>
-          <label>From date<input type="date" id="date-from"></label>
-          <label>To date<input type="date" id="date-to"></label>
-          <button class="btn btn-outline" id="clear-filters">Clear Filters</button>
-        </div>
-        <div class="stats-grid compact">
-          <article class="stat-card"><div class="stat-top">Average AQI</div><div class="stat-value" id="avg-aqi">--</div></article>
-          <article class="stat-card"><div class="stat-top">Highest AQI</div><div class="stat-value" id="max-aqi">--</div></article>
-          <article class="stat-card"><div class="stat-top">Records Found</div><div class="stat-value" id="record-count">0</div></article>
-        </div>
-        <article class="panel"><div class="table-scroll"><table><thead><tr><th>ID</th><th>Sensor</th><th>Recorded At</th><th>PM2.5</th><th>PM10</th><th>CO₂</th><th>AQI</th><th>Actions</th></tr></thead><tbody id="readings-table"></tbody></table></div></article>
-        <div class="panel form-panel" id="reading-form-panel" hidden>
-          <h3 id="reading-form-title">Add Reading</h3>
-          <form id="reading-form"><input type="hidden" id="reading-id">
-            <div class="form-grid">
-              <label>Sensor<select id="reading-sensor" required></select></label>
-              <label>Recorded date/time<input id="reading-date" type="datetime-local" required></label>
-              <label>PM2.5 (µg/m³)<input id="reading-pm25" type="number" min="0" step="any" required></label>
-              <label>PM10 (µg/m³)<input id="reading-pm10" type="number" min="0" step="any" required></label>
-              <label>CO₂ (ppm)<input id="reading-co2" type="number" min="0" step="any" required></label>
-              <label>AQI (0–500)<input id="reading-aqi" type="number" min="0" max="500" required></label>
-            </div>
-            <p class="hint">Enter an AQI from your chosen standard. This demo does not calculate AQI from pollutant concentrations.</p>
-            <div class="form-actions"><button class="btn btn-primary">Save Reading</button><button type="button" class="btn btn-outline" id="cancel-reading">Cancel</button></div>
-          </form>
-        </div>
-      </section>
-
-      <section class="page" id="alerts">
-        <div class="page-intro"><div><h2>Pollution Alerts</h2><p>Demo rule: an alert is created when AQI exceeds 150.</p></div><button class="btn btn-outline" id="refresh-alerts">Refresh alerts</button></div>
-        <div class="stats-grid compact"><article class="stat-card"><div class="stat-top">Total Alerts</div><div class="stat-value" id="total-alerts">0</div></article><article class="stat-card"><div class="stat-top">Unresolved</div><div class="stat-value" id="unresolved-alerts">0</div></article><article class="stat-card"><div class="stat-top">Threshold</div><div class="stat-value">150</div></article></div>
-        <article class="panel"><div class="table-scroll"><table><thead><tr><th>Alert</th><th>Sensor</th><th>Location</th><th>AQI</th><th>Severity</th><th>Time</th><th>Status</th><th>Action</th></tr></thead><tbody id="alerts-table"></tbody></table></div></article>
-      </section>
-
-      <section class="page" id="reports">
-        <div class="page-intro"><div><h2>Reports & Analytics</h2><p>Reports calculated from the readings currently stored in this browser.</p></div><button class="btn btn-primary" id="export-csv">↓ Export Readings CSV</button></div>
-        <div class="stats-grid compact"><article class="stat-card"><div class="stat-top">Highest AQI Location</div><div class="stat-value report-value" id="worst-location">--</div></article><article class="stat-card"><div class="stat-top">Average AQI</div><div class="stat-value" id="overall-average">--</div></article><article class="stat-card"><div class="stat-top">Total Readings</div><div class="stat-value" id="total-readings">0</div></article></div>
-        <article class="panel"><div class="panel-heading"><div><h3>Location-wise Report</h3><p>Highest AQI and average per location</p></div></div><div class="table-scroll"><table><thead><tr><th>Location</th><th>Sensors</th><th>Readings</th><th>Highest AQI</th><th>Average AQI</th></tr></thead><tbody id="location-report"></tbody></table></div></article>
-        <article class="panel"><div class="panel-heading"><div><h3>Daily Average AQI</h3><p>Readings grouped by date</p></div></div><div class="table-scroll"><table><thead><tr><th>Date</th><th>Readings</th><th>Average AQI</th></tr></thead><tbody id="daily-report"></tbody></table></div></article>
-      </section>
-
-      <section class="page" id="docs">
-        <div class="page-intro"><div><h2>DBMS Documentation</h2><p>Database design and academic concepts.</p></div></div>
-        <article class="panel documentation">
-          <h3>Project Abstract</h3><p>AirWatch organizes sensor stations, air-quality readings, historical trends, and pollution alerts using a relational database design.</p>
-          <h3>ER Diagram</h3>
-          <div class="er-box">
-            <div class="er-entity"><strong>USERS</strong><br>PK user_id<br>name, email<br>password_hash, role</div>
-            <div class="er-entity"><strong>SENSORS</strong><br>PK sensor_id<br>sensor_name, location<br>latitude, longitude, status</div>
-            <div class="er-entity"><strong>READINGS</strong><br>PK reading_id<br>FK sensor_id<br>recorded_at, pm25, pm10, co2, aqi</div>
-            <div class="er-entity"><strong>ALERTS</strong><br>PK alert_id<br>FK sensor_id, reading_id<br>alert_type, severity, status</div>
+            <div class="date-chip" id="currentDate"></div>
           </div>
-          <p>Relationship: one sensor has many readings and alerts. A reading can generate multiple alerts. Users are separate from sensor data.</p>
-          <h3>Functional Dependencies</h3>
-          <ul>
-            <li>Users: user_id → name, email, password_hash, role, created_at. Unique email also determines the user attributes.</li>
-            <li>Sensors: sensor_id → sensor_name, location, latitude, longitude, status, created_at.</li>
-            <li>Readings: reading_id → sensor_id, recorded_at, pm25, pm10, co2, aqi.</li>
-            <li>Alerts: alert_id → sensor_id, reading_id, alert_type, message, severity, created_at, status.</li>
-          </ul>
-          <h3>Normalization</h3>
-          <p><strong>1NF:</strong> Fields contain atomic values and rows have unique primary keys.</p>
-          <p><strong>2NF:</strong> Single-column primary keys mean there are no partial dependencies on composite keys.</p>
-          <p><strong>3NF:</strong> Sensor information is stored separately from readings; non-key attributes depend on the key, not on other non-key attributes.</p>
-          <h3>MySQL CRUD and Reports</h3>
-          <pre><code>SELECT * FROM sensors;
 
-INSERT INTO sensors
-(sensor_name, location, latitude, longitude, status)
-VALUES ('Sensor A', 'Campus', 16.30, 80.45, 'Active');
+          <div class="notice">
+            <span>ⓘ</span>
+            <div><strong>Demonstration data</strong><p>These sample readings are for your project preview, not live sensor measurements.</p></div>
+          </div>
 
-UPDATE sensors SET status = 'Inactive'
-WHERE sensor_id = 1;
+          <div class="stats-grid">
+            <article class="stat-card">
+              <div class="stat-top"><span>Average AQI</span><span class="stat-icon purple">◉</span></div>
+              <div class="stat-value" id="avgAqi">68</div>
+              <div class="stat-foot"><span class="status-pill moderate">Moderate</span><span>Sample data</span></div>
+            </article>
+            <article class="stat-card">
+              <div class="stat-top"><span>Active sensors</span><span class="stat-icon blue">⌁</span></div>
+              <div class="stat-value" id="activeCount">4 <small>/ 5</small></div>
+              <div class="stat-foot">Monitoring locations</div>
+            </article>
+            <article class="stat-card">
+              <div class="stat-top"><span>Open alerts</span><span class="stat-icon orange">♧</span></div>
+              <div class="stat-value" id="alertCount">2</div>
+              <div class="stat-foot">Require attention</div>
+            </article>
+            <article class="stat-card">
+              <div class="stat-top"><span>Latest PM2.5</span><span class="stat-icon green">≋</span></div>
+              <div class="stat-value" id="avgPm">24 <small>µg/m³</small></div>
+              <div class="stat-foot">Sample concentration</div>
+            </article>
+          </div>
 
-DELETE FROM sensors WHERE sensor_id = 1;
+          <div class="content-grid">
+            <article class="panel chart-panel">
+              <div class="panel-heading">
+                <div><h3>Air quality trend</h3><p>Sample AQI readings over time</p></div>
+                <select id="chartPeriod" aria-label="Chart period">
+                  <option value="7">Last 7 readings</option>
+                  <option value="12">Last 12 readings</option>
+                </select>
+              </div>
+              <div class="chart-holder"><canvas id="aqiChart"></canvas></div>
+            </article>
 
-SELECT sensor_id, AVG(aqi) AS average_aqi,
-MAX(aqi) AS highest_aqi
-FROM readings GROUP BY sensor_id;
+            <article class="panel">
+              <div class="panel-heading"><div><h3>Air quality guide</h3><p>Common AQI categories</p></div></div>
+              <div class="aqi-guide">
+                <div><i class="good"></i><span>Good</span><strong>0–50</strong></div>
+                <div><i class="moderate"></i><span>Moderate</span><strong>51–100</strong></div>
+                <div><i class="sensitive"></i><span>Unhealthy for sensitive groups</span><strong>101–150</strong></div>
+                <div><i class="unhealthy"></i><span>Unhealthy</span><strong>151–200</strong></div>
+                <div><i class="very-unhealthy"></i><span>Very unhealthy</span><strong>201–300</strong></div>
+                <div><i class="hazardous"></i><span>Hazardous</span><strong>301+</strong></div>
+              </div>
+            </article>
+          </div>
 
-CREATE VIEW daily_air_quality_summary AS
-SELECT DATE(recorded_at) AS reading_date,
-COUNT(*) AS total_readings, AVG(aqi) AS average_aqi,
-MAX(aqi) AS highest_aqi
-FROM readings GROUP BY DATE(recorded_at);
+          <article class="panel table-panel">
+            <div class="panel-heading">
+              <div><h3>Sensor locations</h3><p>Overview of registered monitoring points</p></div>
+              <button class="primary-btn small" data-goto="sensors">View sensors →</button>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead><tr><th>Sensor</th><th>Location</th><th>AQI</th><th>PM2.5</th><th>Status</th></tr></thead>
+                <tbody id="overviewSensorRows"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
 
-START TRANSACTION;
--- Insert a reading and its alert using the same connection.
-COMMIT;
--- Use ROLLBACK instead of COMMIT to undo test changes.</code></pre>
-          <p class="warning-note">These are academic MySQL examples. This frontend does not execute these queries or connect to MySQL.</p>
-          <h3>Testing Checklist</h3>
-          <ul>
-            <li>☐ Register and sign in to the demo.</li><li>☐ Add, edit, search, and delete a sensor.</li><li>☐ Add, filter, edit, and delete readings.</li><li>☐ Verify charts, reports, and CSV export.</li><li>☐ Resolve an alert and refresh the page.</li><li>☐ After backend integration, verify MySQL persistence, roles, views, and transactions.</li>
-          </ul>
-        </article>
-      </section>
+        <section id="page-sensors" class="page">
+          <div class="page-heading">
+            <div><div class="eyebrow">MONITORING NETWORK</div><h1>Sensors</h1><p class="muted">Manage monitoring locations and their latest sample readings.</p></div>
+            <button id="addSensorButton" class="primary-btn admin-only hidden">＋ Add sensor</button>
+          </div>
+          <div id="sensorFormWrap" class="panel hidden">
+            <h3>Add a sensor</h3>
+            <form id="sensorForm" class="inline-form">
+              <input id="sensorName" placeholder="Sensor name" required>
+              <input id="sensorLocation" placeholder="Location" required>
+              <button class="primary-btn" type="submit">Add sensor</button>
+              <button id="cancelSensor" class="secondary-btn" type="button">Cancel</button>
+            </form>
+          </div>
+          <div id="sensorGrid" class="sensor-grid"></div>
+        </section>
 
-      <footer>AirWatch © 2026 · College DBMS Project · <span>Demo frontend</span></footer>
+        <section id="page-history" class="page">
+          <div class="page-heading"><div><div class="eyebrow">DATA EXPLORER</div><h1>Historical readings</h1><p class="muted">Review sample readings and export the table as CSV.</p></div>
+            <button id="exportHistory" class="primary-btn">↓ Export CSV</button></div>
+          <article class="panel">
+            <div class="table-scroll"><table>
+              <thead><tr><th>Date & time</th><th>Sensor</th><th>AQI</th><th>PM2.5</th><th>PM10</th><th>CO₂</th></tr></thead>
+              <tbody id="historyRows"></tbody>
+            </table></div>
+          </article>
+        </section>
+
+        <section id="page-alerts" class="page">
+          <div class="page-heading"><div><div class="eyebrow">ENVIRONMENTAL NOTIFICATIONS</div><h1>Alerts</h1><p class="muted">Review sample conditions requiring attention.</p></div></div>
+          <div id="alertList" class="alert-list"></div>
+        </section>
+
+        <section id="page-reports" class="page">
+          <div class="page-heading"><div><div class="eyebrow">ANALYTICS</div><h1>Reports</h1><p class="muted">Create a simple summary from the sample dataset.</p></div>
+            <button id="downloadReport" class="primary-btn">↓ Download report</button></div>
+          <div class="stats-grid">
+            <article class="stat-card"><div class="stat-top"><span>Total sample readings</span><span class="stat-icon blue">◷</span></div><div class="stat-value" id="reportReadingCount">0</div></article>
+            <article class="stat-card"><div class="stat-top"><span>Average sample AQI</span><span class="stat-icon purple">◉</span></div><div class="stat-value" id="reportAvgAqi">0</div></article>
+            <article class="stat-card"><div class="stat-top"><span>Highest sample AQI</span><span class="stat-icon orange">↗</span></div><div class="stat-value" id="reportMaxAqi">0</div></article>
+          </div>
+          <article class="panel"><h3>Report interpretation</h3><p id="reportInterpretation" class="muted"></p><p class="form-note">Interpretation is based on demonstration data only.</p></article>
+        </section>
+
+        <section id="page-admin" class="page">
+          <div class="page-heading"><div><div class="eyebrow">CONTROL CENTER</div><h1>Admin panel</h1><p class="muted">Preview of administrative controls.</p></div></div>
+          <div class="notice"><span>ⓘ</span><div><strong>Frontend administrator preview</strong><p>Real permissions, registered accounts, and database statistics must be enforced by PHP and MySQL on the server.</p></div></div>
+          <div class="stats-grid">
+            <article class="stat-card"><div class="stat-top"><span>Sample sensors</span><span class="stat-icon blue">⌁</span></div><div class="stat-value" id="adminSensors">0</div></article>
+            <article class="stat-card"><div class="stat-top"><span>Sample readings</span><span class="stat-icon purple">◷</span></div><div class="stat-value" id="adminReadings">0</div></article>
+            <article class="stat-card"><div class="stat-top"><span>Open alerts</span><span class="stat-icon orange">♧</span></div><div class="stat-value" id="adminAlerts">0</div></article>
+          </div>
+          <article class="panel"><h3>Planned database modules</h3>
+            <div class="module-list"><p>✓ Users and roles</p><p>✓ Sensors and locations</p><p>✓ Historical sensor readings</p><p>✓ Alerts and status updates</p><p>○ MySQL CRUD operations — backend integration pending</p></div>
+          </article>
+        </section>
+      </div>
     </main>
   </div>
 
+  <button id="assistantToggle" class="assistant-toggle hidden" aria-label="Open AI assistant">✦</button>
+  <aside id="assistantPanel" class="assistant-panel hidden">
+    <div class="assistant-header"><div><strong>AirWatch Assistant</strong><small>Air quality help</small></div><button id="closeAssistant" class="icon-btn">×</button></div>
+    <div id="chatMessages" class="chat-messages">
+      <div class="chat-bubble bot">Hi! I can explain AQI, PM2.5, PM10, CO₂, and the sample alerts. What would you like to know?</div>
+    </div>
+    <div class="chat-input-row"><input id="chatInput" placeholder="Ask about air quality..." aria-label="Message"><button id="sendChat" class="primary-btn">Send</button></div>
+    <p class="form-note chat-note">Rule-based demo assistant; not a live AI model.</p>
+  </aside>
+
   <div id="toast" class="toast" role="status"></div>
+  <script src="script.js"></script>
 </body>
 </html>
