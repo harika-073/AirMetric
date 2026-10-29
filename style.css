@@ -44,12 +44,7 @@ button {
   letter-spacing: -1px;
 }
 
-.subtitle {
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
+.subtitle,
 .muted {
   color: var(--muted);
   font-size: 13px;
@@ -81,9 +76,9 @@ button {
   width: 100%;
   max-width: 420px;
   padding: 38px;
+  background: var(--white);
   border: 1px solid var(--border);
   border-radius: 22px;
-  background: var(--white);
   box-shadow: var(--shadow);
 }
 
@@ -131,7 +126,8 @@ input:focus {
 .primary-btn,
 .secondary-btn,
 .logout-btn,
-.text-btn {
+.text-btn,
+.delete-btn {
   border: 0;
   border-radius: 9px;
   font-size: 12px;
@@ -153,16 +149,6 @@ input:focus {
 .login-card .primary-btn {
   margin-top: 7px;
   padding: 14px;
-}
-
-.secondary-btn {
-  padding: 10px 13px;
-  color: var(--green-dark);
-  background: var(--green-light);
-}
-
-.secondary-btn:hover {
-  background: #d6f0e2;
 }
 
 .demo-info {
@@ -193,7 +179,7 @@ input:focus {
   font-size: 12px;
 }
 
-/* DASHBOARD LAYOUT */
+/* DASHBOARD */
 
 .dashboard-page {
   min-height: 100vh;
@@ -307,8 +293,15 @@ input:focus {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .welcome-row,
@@ -338,13 +331,17 @@ input:focus {
   margin-bottom: 22px;
 }
 
-/* STAT CARDS */
+/* DASHBOARD CARDS */
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 22px;
+}
+
+.history-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .stat-card {
@@ -440,11 +437,10 @@ input:focus {
   margin: 0;
 }
 
-.chart-panel canvas,
-#historyChart {
+canvas {
   display: block;
   width: 100%;
-  max-height: 280px;
+  max-width: 100%;
 }
 
 .table-wrap {
@@ -495,14 +491,20 @@ tbody tr:last-child td {
   max-width: 250px;
 }
 
+.secondary-btn {
+  padding: 10px 13px;
+  color: var(--green-dark);
+  background: var(--green-light);
+}
+
+.secondary-btn:hover {
+  background: #d6f0e2;
+}
+
 .delete-btn {
   padding: 7px 9px;
   color: #b33a42;
   background: #fff0f0;
-  border: 0;
-  border-radius: 7px;
-  font-size: 11px;
-  font-weight: 700;
 }
 
 .delete-btn:hover {
@@ -588,7 +590,7 @@ footer {
   font-size: 10px;
 }
 
-/* RESPONSIVE */
+/* RESPONSIVE DESIGN */
 
 @media (max-width: 1100px) {
   .stats-grid {
@@ -611,6 +613,7 @@ footer {
 @media (max-width: 720px) {
   .sidebar {
     position: static;
+    display: block;
     width: 100%;
     padding: 16px;
     border-right: 0;
@@ -624,10 +627,6 @@ footer {
   .sidebar-label,
   .sidebar-bottom {
     display: none;
-  }
-
-  .sidebar {
-    display: block;
   }
 
   .nav-btn {
@@ -657,10 +656,6 @@ footer {
     flex-direction: column;
   }
 
-  .stats-grid {
-    gap: 10px;
-  }
-
   .stat-card {
     padding: 15px;
   }
@@ -670,7 +665,8 @@ footer {
   }
 
   .reading-form,
-  .sensor-grid {
+  .sensor-grid,
+  .history-stats {
     grid-template-columns: 1fr;
   }
 
