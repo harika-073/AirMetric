@@ -1,1078 +1,361 @@
 
-"use strict";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f4faf6">
+  <title>AirMetric | Environmental Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
 
-/*
- AetherIQ frontend prototype.
- Data is saved in this browser using localStorage.
- This is NOT yet connected to MySQL.
- Never use frontend-only authentication for real security.
-*/
+  <!-- LOGIN: dashboard remains hidden until sign-in succeeds -->
+  <section id="loginScreen" class="login-screen">
+    <div class="login-art">
+      <div class="art-orb orb-one"></div>
+      <div class="art-orb orb-two"></div>
 
-const $ = (id) => document.getElementById(id);
-const STORAGE_KEY = "aetheriq_workspace_v1";
-const REPORT_KEY = "aetheriq_reports_v1";
+      <a href="#" class="brand brand-large">
+        <span class="brand-mark">A</span><span>AirMetric</span>
+      </a>
 
-const DEMO_ACCOUNTS = [
-  { name: "AetherIQ Admin", email: "admin@aetheriq.com", password: "AirIQ@123", role: "admin" },
-  { name: "AetherIQ User", email: "user@aetheriq.com", password: "AirIQ@123", role: "user" }
-];
-
-const POLLUTANTS = {
-  "PM2.5": { unit: "µg/m³", label: "Fine particulate matter" },
-  "PM10": { unit: "µg/m³", label: "Coarse particulate matter" },
-  "CO": { unit: "mg/m³", label: "Carbon monoxide" },
-  "NO2": { unit: "µg/m³", label: "Nitrogen dioxide" },
-  "SO2": { unit: "µg/m³", label: "Sulfur dioxide" },
-  "O3": { unit: "µg/m³", label: "Ozone" }
-};
-
-const initialStations = [
-  { id: "ST001", name: "Central Green Park", location: "Hyderabad, Telangana", type: "Urban" },
-  { id: "ST002", name: "Industrial East", location: "Uppal, Hyderabad", type: "Industrial" },
-  { id: "ST003", name: "Riverside Residential", location: "Secunderabad, Telangana", type: "Residential" }
-];
-
-function makeDate(daysAgo, hour = 9) {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  d.setHours(hour, 0, 0, 0);
-  return d.toISOString().slice(0, 16);
-}
-
-function seedReadings() {
-  const examples = [
-    ["ST001", "PM2.5", 8.4, "µg/m³", 42],
-    ["ST001", "PM10", 16.2, "µg/m³", 42],
-    ["ST001", "CO", 0.3, "mg/m³", 42],
-    ["ST002", "PM2.5", 27.8, "µg/m³", 92],
-    ["ST002", "NO2", 31.4, "µg/m³", 92],
-    ["ST003", "PM10", 22.1, "µg/m³", 56],
-    ["ST003", "SO2", 8.2, "µg/m³", 56],
-    ["ST001", "O3", 19.5, "µg/m³", 38],
-    ["ST002", "PM10", 42.6, "µg/m³", 108],
-    ["ST003", "PM2.5", 11.3, "µg/m³", 38]
-  ];
-
-  return examples.map((r, i) => ({
-    id: "RD" + String(i + 1).padStart(4, "0"),
-    stationId: r[0],
-    pollutant: r[1],
-    value: r[2],
-    unit: r[3],
-    aqi: r[4],
-    timestamp: makeDate(i % 7, 8 + (i % 9)),
-    notes: "Illustrative sample measurement"
-  }));
-}
-
-function loadWorkspace() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed.readings) && Array.isArray(parsed.stations)) {
-        return parsed;
-      }
-    }
-  } catch (error) {
-    console.warn("Workspace data could not be loaded.", error);
-  }
-
-  return {
-    readings: seedReadings(),
-    stations: initialStations.map(s => ({ ...s }))
-  };
-}
-
-let db = loadWorkspace();
-let currentUser = null;
-let trendChart = null;
-let reportChart = null;
-let toastTimer = null;
-let generatedReports = [];
-
-try {
-  const savedReports = JSON.parse(localStorage.getItem(REPORT_KEY) || "[]");
-  if (Array.isArray(savedReports)) generatedReports = savedReports;
-} catch (_) {
-  generatedReports = [];
-}
-
-function saveWorkspace() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-    return true;
-  } catch (error) {
-    showToast("Could not save browser data. Check available storage.");
-    return false;
-  }
-}
-
-function escapeHTML(value) {
-  return String(value ?? "").replace(/[&<>"']/g, char => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  })[char]);
-}
-
-function formatDate(value) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleString([], {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
-
-function formatDay(value) {
-  return new Date(value).toLocaleDateString([], {
-    day: "numeric",
-    month: "short"
-  });
-}
-
-function getStation(id) {
-  return db.stations.find(s => s.id === id);
-}
-
-function getStatus(aqi) {
-  if (aqi == null || aqi === "") return "Unrated";
-  const n = Number(aqi);
-  if (n <= 50) return "Good";
-  if (n <= 100) return "Moderate";
-  if (n <= 150) return "Poor";
-  return "Unhealthy";
-}
-
-function statusClass(status) {
-  return ({
-    Good: "status-good",
-    Moderate: "status-moderate",
-    Poor: "status-poor",
-    Unhealthy: "status-unhealthy"
-  })[status] || "status-neutral";
-}
-
-function statusBadge(aqi) {
-  const status = getStatus(aqi);
-  return `<span class="status-pill ${statusClass(status)}">${escapeHTML(status)}</span>`;
-}
-
-function showToast(message) {
-  const toast = $("toast");
-  if (!toast) return;
-  toast.textContent = message;
-  toast.classList.add("show");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove("show"), 3000);
-}
-
-function isAdmin() {
-  return currentUser?.role === "admin";
-}
-
-function updateRoleUI() {
-  document.querySelectorAll(".admin-only").forEach(el => {
-    el.classList.toggle("hidden", !isAdmin());
-  });
-
-  const adminNav = document.querySelector(".admin-nav");
-  const adminLabel = document.querySelector(".admin-label");
-  if (adminNav) adminNav.classList.toggle("hidden", !isAdmin());
-  if (adminLabel) adminLabel.classList.toggle("hidden", !isAdmin());
-
-  $("profileName").textContent = currentUser.name;
-  $("profileRole").textContent = isAdmin() ? "Administrator" : "Standard user";
-  $("profileAvatar").textContent = currentUser.name.charAt(0).toUpperCase();
-  $("welcomeText").textContent = `Welcome back, ${currentUser.name}.`;
-}
-
-/* Authentication: demo-only until the PHP backend is connected. */
-function login(email, password, role) {
-  const account = DEMO_ACCOUNTS.find(a =>
-    a.email.toLowerCase() === email.trim().toLowerCase() &&
-    a.password === password &&
-    a.role === role
-  );
-
-  if (!account) {
-    $("loginError").textContent = "Invalid demo credentials or account role. Please try again.";
-    return;
-  }
-
-  currentUser = { name: account.name, email: account.email, role: account.role };
-  $("loginError").textContent = "";
-  $("loginScreen").classList.add("hidden");
-  $("app").classList.remove("hidden");
-
-  updateRoleUI();
-  updateCurrentDate();
-  renderAll();
-  navigate("overview");
-  showToast(`Welcome to AetherIQ, ${account.name}.`);
-}
-
-$("loginForm").addEventListener("submit", event => {
-  event.preventDefault();
-  login($("email").value, $("password").value, $("loginRole").value);
-});
-
-document.querySelectorAll(".demo-account").forEach(button => {
-  button.addEventListener("click", () => {
-    const role = button.dataset.role;
-    const account = DEMO_ACCOUNTS.find(a => a.role === role);
-    $("email").value = account.email;
-    $("password").value = account.password;
-    $("loginRole").value = role;
-    login(account.email, account.password, role);
-  });
-});
-
-$("togglePassword").addEventListener("click", () => {
-  const field = $("password");
-  const showing = field.type === "text";
-  field.type = showing ? "password" : "text";
-  $("togglePassword").textContent = showing ? "Show" : "Hide";
-});
-
-$("logoutBtn").addEventListener("click", () => {
-  currentUser = null;
-  $("app").classList.add("hidden");
-  $("loginScreen").classList.remove("hidden");
-  $("password").value = "";
-  $("loginError").textContent = "";
-  $("sidebar").classList.remove("open");
-});
-
-$("profileButton").addEventListener("click", () => {
-  showToast(`${currentUser?.email || ""} · ${isAdmin() ? "Administrator" : "Standard user"}`);
-});
-
-/* Navigation */
-const PAGE_NAMES = {
-  overview: "Overview",
-  readings: "Air readings",
-  stations: "Monitoring stations",
-  reports: "Reports & analytics",
-  alerts: "Pollution alerts",
-  users: "User management"
-};
-
-function navigate(page) {
-  if (!PAGE_NAMES[page]) return;
-  if (page === "users" && !isAdmin()) {
-    showToast("Administrator access is required.");
-    return;
-  }
-
-  document.querySelectorAll(".page-section").forEach(section => {
-    section.classList.toggle("active", section.id === `page-${page}`);
-  });
-
-  document.querySelectorAll(".nav-item[data-page]").forEach(button => {
-    button.classList.toggle("active", button.dataset.page === page);
-  });
-
-  $("breadcrumbPage").textContent = PAGE_NAMES[page];
-  $("sidebar").classList.remove("open");
-
-  if (page === "overview") renderOverview();
-  if (page === "readings") renderReadings();
-  if (page === "stations") renderStations();
-  if (page === "reports") renderReports();
-  if (page === "alerts") renderAlerts();
-  if (page === "users") renderUsers();
-}
-
-document.querySelectorAll("[data-page]").forEach(button => {
-  button.addEventListener("click", event => {
-    event.preventDefault();
-    navigate(button.dataset.page);
-  });
-});
-
-$("menuToggle").addEventListener("click", () => {
-  $("sidebar").classList.toggle("open");
-});
-
-function updateCurrentDate() {
-  $("currentDate").textContent = new Date().toLocaleDateString([], {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric"
-  });
-}
-
-/* Overview */
-function latestReadingFor(pollutant) {
-  return db.readings
-    .filter(r => r.pollutant === pollutant)
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
-}
-
-function averageAQI(readings) {
-  const records = readings.filter(r => r.aqi != null && r.aqi !== "" && Number.isFinite(Number(r.aqi)));
-  if (!records.length) return null;
-  return Math.round(records.reduce((sum, r) => sum + Number(r.aqi), 0) / records.length);
-}
-
-function renderOverview() {
-  const aqi = averageAQI(db.readings);
-  const aqiText = aqi === null ? "—" : aqi;
-
-  $("aqiValue").textContent = aqiText;
-  $("aqiStatus").textContent = aqi === null ? "No data" : getStatus(aqi);
-  $("aqiStatus").className = "status-pill " + statusClass(aqi === null ? "" : getStatus(aqi));
-  $("aqiDescription").textContent = aqi === null ? "Add readings to begin" :
-    aqi <= 50 ? "Good air quality range" :
-    aqi <= 100 ? "Moderate air quality range" :
-    aqi <= 150 ? "Elevated pollution levels" : "High pollution levels";
-  $("aqiMeter").style.width = `${aqi === null ? 0 : Math.min(100, aqi / 300 * 100)}%`;
-
-  const pm25 = latestReadingFor("PM2.5");
-  const pm10 = latestReadingFor("PM10");
-  const co = latestReadingFor("CO");
-  $("pm25Value").textContent = pm25 ? Number(pm25.value).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—";
-  $("pm10Value").textContent = pm10 ? Number(pm10.value).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—";
-  $("coValue").textContent = co ? Number(co.value).toLocaleString(undefined, { maximumFractionDigits: 3 }) : "—";
-
-  $("stationCount").textContent = db.stations.length;
-  renderStationPreview();
-  renderRecentReadings();
-  renderDistribution();
-  renderTrendChart();
-  updateAlertBadge();
-}
-
-function renderStationPreview() {
-  const container = $("stationPreview");
-  if (!db.stations.length) {
-    container.innerHTML = '<div class="empty-state">No stations added yet.</div>';
-    return;
-  }
-
-  container.innerHTML = db.stations.slice(0, 4).map(station => {
-    const readings = db.readings.filter(r => r.stationId === station.id);
-    const aqi = averageAQI(readings);
-    return `
-      <div class="station-row">
-        <div class="station-pin">⌖</div>
-        <div class="station-row-info">
-          <strong>${escapeHTML(station.name)}</strong>
-          <small>${escapeHTML(station.location)}</small>
+      <div class="login-message">
+        <span class="eyebrow"><span class="live-dot"></span> ENVIRONMENTAL INTELLIGENCE</span>
+        <h1>Measure today.<br><em>Protect tomorrow.</em></h1>
+        <p>Monitor air quality, understand pollutant trends, and turn environmental data into better decisions.</p>
+        <div class="login-highlights">
+          <span>✳ Environmental monitoring</span>
+          <span>⌁ Insightful reporting</span>
+          <span>◉ Pollution alerts</span>
         </div>
-        <div class="station-value">
-          <strong>${aqi === null ? "—" : aqi}</strong>
-          <small>${aqi === null ? "No AQI" : escapeHTML(getStatus(aqi))}</small>
+      </div>
+
+      <div class="login-art-footer">
+        <span>ENVIRONMENTAL DATA PLATFORM</span>
+        <span>BUILT FOR BETTER AIR</span>
+      </div>
+    </div>
+
+    <div class="login-side">
+      <div class="login-card">
+        <div class="mobile-brand brand">
+          <span class="brand-mark">A</span><span>AirMetric</span>
         </div>
-      </div>`;
-  }).join("");
-}
+        <span class="eyebrow">WELCOME BACK</span>
+        <h2>Sign in to your workspace</h2>
+        <p class="muted">Enter your account credentials to continue.</p>
 
-function renderRecentReadings() {
-  const body = $("recentReadingsBody");
-  const rows = [...db.readings]
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-    .slice(0, 5);
+        <form id="loginForm">
+          <label for="loginRole">Account type</label>
+          <select id="loginRole" required>
+            <option value="user">Standard user</option>
+            <option value="admin">Administrator</option>
+          </select>
 
-  if (!rows.length) {
-    body.innerHTML = '<tr><td colspan="4">No readings available.</td></tr>';
-    return;
-  }
+          <label for="email">Email address</label>
+          <input id="email" type="email" placeholder="you@example.com" autocomplete="username" required>
 
-  body.innerHTML = rows.map(r => {
-    const station = getStation(r.stationId);
-    return `<tr>
-      <td><div class="table-primary">${escapeHTML(station?.name || "Unknown station")}</div><div class="table-secondary">${escapeHTML(r.pollutant)}</div></td>
-      <td class="value-cell">${escapeHTML(r.value)} <span class="table-secondary">${escapeHTML(r.unit)}</span></td>
-      <td>${statusBadge(r.aqi)}</td>
-      <td>${escapeHTML(formatDate(r.timestamp))}</td>
-    </tr>`;
-  }).join("");
-}
+          <label for="password">Password</label>
+          <div class="password-wrap">
+            <input id="password" type="password" placeholder="Enter your password" autocomplete="current-password" required>
+            <button type="button" id="togglePassword" class="password-toggle">Show</button>
+          </div>
 
-function renderDistribution() {
-  const container = $("distributionList");
-  const groups = [
-    { name: "Good", color: "#83e4ad" },
-    { name: "Moderate", color: "#e7c578" },
-    { name: "Poor", color: "#efa477" },
-    { name: "Unhealthy", color: "#e58e98" }
-  ];
+          <p id="loginError" class="form-error" role="alert"></p>
+          <button class="btn btn-primary login-submit" type="submit">
+            Sign in <span>↗</span>
+          </button>
+        </form>
 
-  const rated = db.readings.filter(r => r.aqi != null && r.aqi !== "");
-  container.innerHTML = groups.map(group => {
-    const count = rated.filter(r => getStatus(r.aqi) === group.name).length;
-    const pct = rated.length ? Math.round(count / rated.length * 100) : 0;
-    return `<div class="distribution-row">
-      <div class="distribution-label"><span>${group.name}</span><span>${count} · ${pct}%</span></div>
-      <div class="distribution-track"><span style="width:${pct}%;background:${group.color}"></span></div>
-    </div>`;
-  }).join("");
-}
-
-/* Charts */
-function chartColors() {
-  const light = document.body.classList.contains("light-theme");
-  return {
-    text: light ? "#758679" : "#91a296",
-    grid: light ? "#e7eee7" : "#29372e"
-  };
-}
-
-function buildTrendSeries(days) {
-  const now = new Date();
-  const labels = [];
-  const pm25 = [];
-  const pm10 = [];
-  const no2 = [];
-
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    const key = d.toLocaleDateString();
-    labels.push(d.toLocaleDateString([], { day: "numeric", month: "short" }));
-
-    const dayRows = db.readings.filter(r =>
-      new Date(r.timestamp).toLocaleDateString() === key
-    );
-
-    function mean(pollutant) {
-      const values = dayRows.filter(r => r.pollutant === pollutant).map(r => Number(r.value));
-      return values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
-    }
-
-    pm25.push(mean("PM2.5"));
-    pm10.push(mean("PM10"));
-    no2.push(mean("NO2"));
-  }
-
-  return { labels, pm25, pm10, no2 };
-}
-
-function renderTrendChart() {
-  if (typeof Chart === "undefined" || !$("trendChart")) return;
-  const days = Number($("chartRange").value || 7);
-  const data = buildTrendSeries(days);
-  const colors = chartColors();
-
-  if (trendChart) trendChart.destroy();
-  trendChart = new Chart($("trendChart"), {
-    type: "line",
-    data: {
-      labels: data.labels,
-      datasets: [
-        { label: "PM2.5", data: data.pm25, borderColor: "#83e4ad", backgroundColor: "#83e4ad16", fill: true, tension: .38, pointRadius: 2, spanGaps: true },
-        { label: "PM10", data: data.pm10, borderColor: "#89bff1", backgroundColor: "transparent", tension: .38, pointRadius: 2, spanGaps: true },
-        { label: "NO₂", data: data.no2, borderColor: "#bca3f4", backgroundColor: "transparent", tension: .38, pointRadius: 2, spanGaps: true }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { intersect: false, mode: "index" },
-      plugins: {
-        legend: { display: false },
-        tooltip: { backgroundColor: "#17231b", titleColor: "#edf5ee", bodyColor: "#b8cabc", padding: 12, cornerRadius: 9 }
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { color: colors.text, maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } },
-        y: { beginAtZero: true, grid: { color: colors.grid }, border: { display: false }, ticks: { color: colors.text, maxTicksLimit: 5 } }
-      }
-    }
-  });
-}
-
-$("chartRange").addEventListener("change", renderTrendChart);
-
-/* Readings: create, edit, delete, search and filter */
-function populateStationSelect(selectId, includeAll = false) {
-  const select = $(selectId);
-  if (!select) return;
-  const previous = select.value;
-  select.innerHTML = includeAll ? '<option value="">All stations</option>' : "";
-
-  db.stations.forEach(station => {
-    const option = document.createElement("option");
-    option.value = station.id;
-    option.textContent = station.name;
-    select.appendChild(option);
-  });
-
-  if ([...select.options].some(o => o.value === previous)) select.value = previous;
-}
-
-function renderReadings() {
-  const query = $("readingSearch").value.trim().toLowerCase();
-  const pollutant = $("pollutantFilter").value;
-  const status = $("statusFilter").value;
-
-  const rows = [...db.readings]
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-    .filter(r => {
-      const station = getStation(r.stationId);
-      const matchesQuery = [
-        r.id, r.pollutant, station?.name, station?.location, getStatus(r.aqi)
-      ].join(" ").toLowerCase().includes(query);
-      return matchesQuery &&
-        (!pollutant || r.pollutant === pollutant) &&
-        (!status || getStatus(r.aqi) === status);
-    });
-
-  $("readingCountText").textContent = `${rows.length} record${rows.length === 1 ? "" : "s"}`;
-  $("readingsEmpty").classList.toggle("hidden", rows.length > 0);
-
-  $("readingsBody").innerHTML = rows.map(r => {
-    const station = getStation(r.stationId);
-    return `<tr>
-      <td><div class="table-primary">${escapeHTML(r.id)} · ${escapeHTML(station?.name || "Unknown station")}</div><div class="table-secondary">${escapeHTML(station?.location || "")}</div></td>
-      <td><div class="table-primary">${escapeHTML(r.pollutant)}</div><div class="table-secondary">${escapeHTML(POLLUTANTS[r.pollutant]?.label || "")}</div></td>
-      <td><span class="value-cell">${escapeHTML(r.value)}</span> <span class="table-secondary">${escapeHTML(r.unit)}</span></td>
-      <td>${r.aqi == null || r.aqi === "" ? '<span class="status-pill status-neutral">Not rated</span>' : `<div class="table-primary">${escapeHTML(r.aqi)} AQI</div><div style="margin-top:5px">${statusBadge(r.aqi)}</div>`}</td>
-      <td>${escapeHTML(formatDate(r.timestamp))}</td>
-      <td class="admin-only">${isAdmin() ? `<div class="row-actions"><button class="small-action" data-edit-reading="${escapeHTML(r.id)}">Edit</button><button class="small-action danger" data-delete-reading="${escapeHTML(r.id)}">Delete</button></div>` : "—"}</td>
-    </tr>`;
-  }).join("");
-
-  document.querySelectorAll("#readingsBody [data-edit-reading]").forEach(button => {
-    button.addEventListener("click", () => openReadingModal(button.dataset.editReading));
-  });
-
-  document.querySelectorAll("#readingsBody [data-delete-reading]").forEach(button => {
-    button.addEventListener("click", () => deleteReading(button.dataset.deleteReading));
-  });
-}
-
-["readingSearch", "pollutantFilter", "statusFilter"].forEach(id => {
-  $(id).addEventListener(id === "readingSearch" ? "input" : "change", renderReadings);
-});
-
-function openReadingModal(id = "") {
-  if (!isAdmin()) {
-    showToast("Administrator access is required to modify readings.");
-    return;
-  }
-
-  if (!db.stations.length) {
-    showToast("Add a monitoring station before entering readings.");
-    navigate("stations");
-    return;
-  }
-
-  populateStationSelect("readingStation");
-  $("readingForm").reset();
-  $("editReadingId").value = id;
-  $("modalError").textContent = "";
-
-  if (id) {
-    const reading = db.readings.find(r => r.id === id);
-    if (!reading) return;
-    $("modalTitle").textContent = "Edit reading";
-    $("readingStation").value = reading.stationId;
-    $("readingPollutant").value = reading.pollutant;
-    $("readingValue").value = reading.value;
-    $("readingUnit").value = reading.unit;
-    $("readingAQI").value = reading.aqi ?? "";
-    $("readingTime").value = reading.timestamp;
-    $("readingNotes").value = reading.notes || "";
-  } else {
-    $("modalTitle").textContent = "Add reading";
-    $("readingTime").value = new Date().toISOString().slice(0, 16);
-    $("readingUnit").value = POLLUTANTS[$("readingPollutant").value].unit;
-  }
-
-  $("modalBackdrop").classList.remove("hidden");
-}
-
-document.querySelectorAll('[data-action="add-reading"]').forEach(button => {
-  button.addEventListener("click", () => openReadingModal());
-});
-
-$("readingPollutant").addEventListener("change", () => {
-  $("readingUnit").value = POLLUTANTS[$("readingPollutant").value].unit;
-});
-
-function newId(prefix, records) {
-  let id;
-  do {
-    id = prefix + Math.random().toString(36).slice(2, 9).toUpperCase();
-  } while (records.some(record => record.id === id));
-  return id;
-}
-
-$("readingForm").addEventListener("submit", event => {
-  event.preventDefault();
-  if (!isAdmin()) return;
-
-  const id = $("editReadingId").value;
-  const value = Number($("readingValue").value);
-  const aqiInput = $("readingAQI").value;
-  const timestamp = $("readingTime").value;
-  const pollutant = $("readingPollutant").value;
-
-  if (!Number.isFinite(value) || value < 0) {
-    $("modalError").textContent = "Enter a valid non-negative measurement.";
-    return;
-  }
-
-  if (!timestamp || Number.isNaN(new Date(timestamp).getTime())) {
-    $("modalError").textContent = "Choose a valid date and time.";
-    return;
-  }
-
-  if (aqiInput !== "" && (!Number.isFinite(Number(aqiInput)) || Number(aqiInput) < 0 || Number(aqiInput) > 500)) {
-    $("modalError").textContent = "AQI must be between 0 and 500.";
-    return;
-  }
-
-  const record = {
-    id: id || newId("RD", db.readings),
-    stationId: $("readingStation").value,
-    pollutant,
-    value,
-    unit: $("readingUnit").value,
-    aqi: aqiInput === "" ? null : Number(aqiInput),
-    timestamp,
-    notes: $("readingNotes").value.trim()
-  };
-
-  if (!record.stationId || !getStation(record.stationId)) {
-    $("modalError").textContent = "Select a valid monitoring station.";
-    return;
-  }
-
-  if (id) {
-    const index = db.readings.findIndex(r => r.id === id);
-    if (index >= 0) db.readings[index] = record;
-  } else {
-    db.readings.push(record);
-  }
-
-  saveWorkspace();
-  closeReadingModal();
-  renderAll();
-  showToast(id ? "Reading updated successfully." : "New reading saved successfully.");
-});
-
-function deleteReading(id) {
-  if (!isAdmin()) return;
-  const record = db.readings.find(r => r.id === id);
-  if (!record) return;
-
-  if (!confirm(`Delete reading ${id} (${record.pollutant})?`)) return;
-  db.readings = db.readings.filter(r => r.id !== id);
-  saveWorkspace();
-  renderAll();
-  showToast("Reading deleted.");
-}
-
-function closeReadingModal() {
-  $("modalBackdrop").classList.add("hidden");
-}
-
-$("closeModal").addEventListener("click", closeReadingModal);
-$("cancelModal").addEventListener("click", closeReadingModal);
-$("modalBackdrop").addEventListener("click", event => {
-  if (event.target === $("modalBackdrop")) closeReadingModal();
-});
-
-/* Monitoring stations */
-function renderStations() {
-  const container = $("stationCards");
-
-  if (!db.stations.length) {
-    container.innerHTML = '<div class="panel empty-state"><span>⌖</span><h3>No monitoring stations</h3><p>Add a station to start organising readings.</p></div>';
-    return;
-  }
-
-  container.innerHTML = db.stations.map(station => {
-    const readings = db.readings.filter(r => r.stationId === station.id);
-    const aqi = averageAQI(readings);
-    const pm25 = latestReadingForStation(station.id, "PM2.5");
-
-    return `<article class="station-card">
-      <div class="station-card-top"><div class="station-card-icon">⌖</div>${aqi == null ? '<span class="status-pill status-neutral">No AQI</span>' : statusBadge(aqi)}</div>
-      <h3>${escapeHTML(station.name)}</h3>
-      <p>⌖ ${escapeHTML(station.location)}</p>
-      <div class="station-card-metrics">
-        <div><span>Average recorded AQI</span><strong>${aqi === null ? "—" : aqi}</strong></div>
-        <div><span>PM2.5 latest</span><strong>${pm25 ? escapeHTML(pm25.value) : "—"}</strong></div>
+        <div class="login-note">
+          <span>⌑</span>
+          <p><strong>Protected workspace</strong><br>Your account will be verified by the authentication backend once connected.</p>
+        </div>
+        <p class="login-foot">AirMetric · Environmental Monitoring DBMS</p>
       </div>
-      <div class="station-card-bottom"><small>${escapeHTML(station.type)} · ${readings.length} reading(s)</small>${isAdmin() ? `<button class="small-action danger" data-delete-station="${escapeHTML(station.id)}">Delete</button>` : `<button class="small-action" data-station-readings="${escapeHTML(station.id)}">View readings</button>`}</div>
-    </article>`;
-  }).join("");
+    </div>
+  </section>
 
-  document.querySelectorAll("[data-delete-station]").forEach(button => {
-    button.addEventListener("click", () => deleteStation(button.dataset.deleteStation));
-  });
+  <!-- APPLICATION -->
+  <div id="app" class="app-shell hidden">
+    <aside id="sidebar" class="sidebar">
+      <a href="#" class="brand sidebar-brand" data-page="overview">
+        <span class="brand-mark">A</span><span>AirMetric</span>
+      </a>
 
-  document.querySelectorAll("[data-station-readings]").forEach(button => {
-    button.addEventListener("click", () => {
-      navigate("readings");
-      $("readingSearch").value = getStation(button.dataset.stationReadings)?.name || "";
-      renderReadings();
-    });
-  });
-}
+      <div class="workspace-label">WORKSPACE</div>
+      <nav class="main-nav">
+        <button class="nav-item active" data-page="overview"><span>◫</span> Overview</button>
+        <button class="nav-item" data-page="readings"><span>⌁</span> Air readings</button>
+        <button class="nav-item" data-page="stations"><span>⌖</span> Monitoring stations</button>
+        <button class="nav-item" data-page="reports"><span>▤</span> Reports & analytics</button>
+        <button class="nav-item" data-page="alerts">
+          <span>♧</span> Pollution alerts <span id="alertBadge" class="nav-count">0</span>
+        </button>
 
-function latestReadingForStation(stationId, pollutant) {
-  return db.readings.filter(r => r.stationId === stationId && r.pollutant === pollutant)
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
-}
+        <div class="workspace-label admin-label admin-only hidden">ADMINISTRATION</div>
+        <button class="nav-item admin-only hidden" data-page="users"><span>♙</span> User management</button>
+      </nav>
 
-function openStationModal() {
-  if (!isAdmin()) return;
-  $("stationForm").reset();
-  $("stationModalError").textContent = "";
-  $("stationModalTitle").textContent = "Add monitoring station";
-  $("stationModalBackdrop").classList.remove("hidden");
-}
-
-document.querySelector('[data-action="add-station"]').addEventListener("click", openStationModal);
-$("closeStationModal").addEventListener("click", closeStationModal);
-$("cancelStationModal").addEventListener("click", closeStationModal);
-$("stationModalBackdrop").addEventListener("click", event => {
-  if (event.target === $("stationModalBackdrop")) closeStationModal();
-});
-
-function closeStationModal() {
-  $("stationModalBackdrop").classList.add("hidden");
-}
-
-$("stationForm").addEventListener("submit", event => {
-  event.preventDefault();
-  if (!isAdmin()) return;
-
-  const name = $("stationName").value.trim();
-  const location = $("stationLocation").value.trim();
-
-  if (!name || !location) {
-    $("stationModalError").textContent = "Enter both the station name and location.";
-    return;
-  }
-
-  if (db.stations.some(s => s.name.toLowerCase() === name.toLowerCase())) {
-    $("stationModalError").textContent = "A station with this name already exists.";
-    return;
-  }
-
-  db.stations.push({
-    id: newId("ST", db.stations),
-    name,
-    location,
-    type: $("stationType").value
-  });
-
-  saveWorkspace();
-  closeStationModal();
-  renderAll();
-  showToast("Monitoring station added.");
-});
-
-function deleteStation(id) {
-  if (!isAdmin()) return;
-  const station = getStation(id);
-  if (!station) return;
-
-  if (db.readings.some(r => r.stationId === id)) {
-    showToast("This station has readings. Delete or reassign them first.");
-    return;
-  }
-
-  if (!confirm(`Delete monitoring station "${station.name}"?`)) return;
-  db.stations = db.stations.filter(s => s.id !== id);
-  saveWorkspace();
-  renderAll();
-  showToast("Monitoring station deleted.");
-}
-
-/* Reports */
-function getReportReadings() {
-  const from = $("reportFrom").value;
-  const to = $("reportTo").value;
-  const station = $("reportStation").value;
-
-  return db.readings.filter(r => {
-    const date = new Date(r.timestamp);
-    if (from && date < new Date(`${from}T00:00:00`)) return false;
-    if (to && date > new Date(`${to}T23:59:59.999`)) return false;
-    if (station && r.stationId !== station) return false;
-    return true;
-  }).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-}
-
-function renderReports() {
-  populateStationSelect("reportStation", true);
-  const rows = getReportReadings();
-  const avg = averageAQI(rows);
-  const distinctStations = new Set(rows.map(r => r.stationId));
-
-  $("reportTotal").textContent = rows.length;
-  $("reportAvg").textContent = avg === null ? "—" : avg;
-  $("reportStations").textContent = distinctStations.size;
-  $("reportElevated").textContent = rows.filter(r => Number(r.aqi) > 50).length;
-
-  renderReportChart(rows);
-  renderReportHistory();
-}
-
-function renderReportChart(rows) {
-  if (typeof Chart === "undefined" || !$("reportChart")) return;
-  const colors = chartColors();
-  const buckets = new Map();
-
-  rows.forEach(r => {
-    if (!buckets.has(r.pollutant)) buckets.set(r.pollutant, []);
-    buckets.get(r.pollutant).push(Number(r.value));
-  });
-
-  const labels = [...buckets.keys()];
-  const values = labels.map(name => {
-    const list = buckets.get(name);
-    return list.reduce((sum, n) => sum + n, 0) / list.length;
-  });
-
-  if (reportChart) reportChart.destroy();
-
-  reportChart = new Chart($("reportChart"), {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [{
-        label: "Average measured concentration",
-        data: values,
-        backgroundColor: ["#83e4adbb", "#89bff1bb", "#bca3f4bb", "#e7c578bb", "#e99b8dbb", "#81cfc9bb"],
-        borderRadius: 7,
-        maxBarThickness: 48
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { backgroundColor: "#17231b", titleColor: "#edf5ee", bodyColor: "#b8cabc" }
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { color: colors.text } },
-        y: { beginAtZero: true, grid: { color: colors.grid }, ticks: { color: colors.text } }
-      }
-    }
-  });
-}
-
-$("applyReport").addEventListener("click", renderReports);
-
-$("generateReport").addEventListener("click", () => {
-  const rows = getReportReadings();
-  const report = {
-    id: newId("RP", generatedReports),
-    name: "Environmental readings report",
-    generatedAt: new Date().toISOString(),
-    count: rows.length,
-    averageAQI: averageAQI(rows),
-    station: $("reportStation").value || "All stations",
-    from: $("reportFrom").value || "Any",
-    to: $("reportTo").value || "Any"
-  };
-
-  generatedReports.unshift(report);
-  generatedReports = generatedReports.slice(0, 30);
-
-  try {
-    localStorage.setItem(REPORT_KEY, JSON.stringify(generatedReports));
-  } catch (_) {
-    showToast("Report history could not be saved.");
-  }
-
-  renderReportHistory();
-  showToast("Report generated. Export CSV for a spreadsheet copy.");
-});
-
-function renderReportHistory() {
-  const container = $("reportHistory");
-  if (!generatedReports.length) {
-    container.innerHTML = '<div class="empty-state"><span>▤</span><h3>No reports generated yet</h3><p>Choose your filters and generate your first report.</p></div>';
-    return;
-  }
-
-  container.innerHTML = generatedReports.map(r => `
-    <div class="report-history-row">
-      <div class="report-history-icon">▤</div>
-      <div><strong>${escapeHTML(r.name)}</strong><small>${escapeHTML(formatDate(r.generatedAt))} · ${escapeHTML(r.count)} records · Average AQI ${r.averageAQI ?? "—"}</small></div>
-      <button class="small-action" data-export-saved="${escapeHTML(r.id)}">Export current data</button>
-    </div>`).join("");
-
-  container.querySelectorAll("[data-export-saved]").forEach(button => {
-    button.addEventListener("click", () => exportCSV(getReportReadings(), "aetheriq-report.csv"));
-  });
-}
-
-/* CSV export */
-function csvEscape(value) {
-  const text = String(value ?? "");
-  return '"' + text.replace(/"/g, '""') + '"';
-}
-
-function downloadCSV(rows, filename) {
-  const csv = rows.map(row => row.map(csvEscape).join(",")).join("\r\n");
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
-function exportCSV(readings, filename) {
-  const header = ["Reading ID", "Station", "Location", "Pollutant", "Value", "Unit", "AQI", "Status", "Timestamp", "Notes"];
-  const rows = readings.map(r => {
-    const station = getStation(r.stationId);
-    return [
-      r.id, station?.name || "Unknown", station?.location || "",
-      r.pollutant, r.value, r.unit, r.aqi ?? "", getStatus(r.aqi),
-      r.timestamp, r.notes || ""
-    ];
-  });
-
-  downloadCSV([header, ...rows], filename);
-  showToast("CSV export downloaded.");
-}
-
-$("exportReadings").addEventListener("click", () => {
-  const query = $("readingSearch").value.trim().toLowerCase();
-  const pollutant = $("pollutantFilter").value;
-  const status = $("statusFilter").value;
-
-  const rows = db.readings.filter(r => {
-    const station = getStation(r.stationId);
-    return [r.id, r.pollutant, station?.name, station?.location, getStatus(r.aqi)]
-      .join(" ").toLowerCase().includes(query) &&
-      (!pollutant || r.pollutant === pollutant) &&
-      (!status || getStatus(r.aqi) === status);
-  });
-
-  exportCSV(rows, "aetheriq-readings.csv");
-});
-
-$("exportReport").addEventListener("click", () => {
-  exportCSV(getReportReadings(), "aetheriq-environmental-report.csv");
-});
-
-/* Alerts */
-function getAlerts() {
-  return db.readings.filter(r => Number(r.aqi) > 50)
-    .sort((a, b) => Number(b.aqi) - Number(a.aqi));
-}
-
-function updateAlertBadge() {
-  $("alertBadge").textContent = getAlerts().length;
-}
-
-function renderAlerts() {
-  const alerts = getAlerts();
-  $("alertTotal").textContent = alerts.length;
-  $("alertElevated").textContent = alerts.filter(r => Number(r.aqi) > 100).length;
-
-  const container = $("alertsList");
-  if (!alerts.length) {
-    container.innerHTML = '<div class="panel empty-state"><span>✓</span><h3>No elevated readings</h3><p>No readings currently exceed the demonstration AQI threshold of 50. This is not a live alert service.</p></div>';
-    return;
-  }
-
-  container.innerHTML = alerts.map(r => {
-    const station = getStation(r.stationId);
-    const critical = Number(r.aqi) > 100;
-    return `<article class="alert-item ${critical ? "critical" : ""}">
-      <div class="alert-item-icon">${critical ? "!" : "◈"}</div>
-      <div>
-        <strong>${critical ? "Elevated AQI reading" : "Moderate AQI reading"} · ${escapeHTML(station?.name || "Unknown station")}</strong>
-        <p>${escapeHTML(r.pollutant)} measured at ${escapeHTML(r.value)} ${escapeHTML(r.unit)}. Recorded AQI: ${escapeHTML(r.aqi)} (${escapeHTML(getStatus(r.aqi))}).</p>
-        <small>${escapeHTML(formatDate(r.timestamp))} · Record ${escapeHTML(r.id)}</small>
+      <div class="sidebar-bottom">
+        <div class="sidebar-status">
+          <span class="live-dot"></span>
+          <div><strong>Workspace active</strong><small>Environmental monitoring</small></div>
+        </div>
+        <button id="themeToggle" class="theme-toggle"><span>☼</span> Switch appearance</button>
+        <div class="profile-row">
+          <div id="profileAvatar" class="avatar">U</div>
+          <div class="profile-info">
+            <strong id="profileName">AirMetric User</strong>
+            <small id="profileRole">Standard user</small>
+          </div>
+          <button id="logoutBtn" class="icon-button" title="Sign out" aria-label="Sign out">⇥</button>
+        </div>
       </div>
-      ${isAdmin() ? `<button class="small-action" data-alert-edit="${escapeHTML(r.id)}">Review</button>` : ""}
-    </article>`;
-  }).join("");
+    </aside>
 
-  container.querySelectorAll("[data-alert-edit]").forEach(button => {
-    button.addEventListener("click", () => openReadingModal(button.dataset.alertEdit));
-  });
-}
+    <main class="main-content">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="menuToggle" class="icon-button menu-toggle" aria-label="Open menu">☰</button>
+          <div class="breadcrumb">Workspace <span>/</span> <strong id="breadcrumbPage">Overview</strong></div>
+        </div>
+        <div class="topbar-right">
+          <span id="currentDate" class="date-label"></span>
+          <div class="topbar-avatar">A</div>
+        </div>
+      </header>
 
-$("refreshAlerts").addEventListener("click", () => {
-  renderAlerts();
-  showToast("Alerts refreshed from the saved readings.");
-});
+      <!-- OVERVIEW -->
+      <section id="page-overview" class="page-section active">
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">ENVIRONMENTAL OVERVIEW</span>
+            <h1>Air quality at a glance</h1>
+            <p id="welcomeText" class="muted">Your environmental monitoring workspace.</p>
+          </div>
+          <button class="btn btn-primary admin-only hidden" data-action="add-reading">＋ Add reading</button>
+        </div>
 
-/* Demo user list */
-function renderUsers() {
-  $("usersBody").innerHTML = DEMO_ACCOUNTS.map(account => `
-    <tr>
-      <td><div class="table-primary">${escapeHTML(account.name)}</div><div class="table-secondary">Demo account</div></td>
-      <td>${escapeHTML(account.email)}</td>
-      <td><span class="status-pill ${account.role === "admin" ? "status-good" : "status-neutral"}">${account.role === "admin" ? "Administrator" : "Standard user"}</span></td>
-      <td>${account.role === "admin" ? "Manage demo data" : "View dashboard and reports"}</td>
-    </tr>`).join("");
-}
+        <div class="hero-grid">
+          <article class="aqi-card panel">
+            <div class="card-topline">
+              <div><span class="eyebrow">AVERAGE RECORDED AQI</span><h2>Air Quality Index</h2></div>
+              <div class="metric-icon mint">⌁</div>
+            </div>
+            <div class="aqi-main">
+              <div>
+                <div id="aqiValue" class="aqi-number">—</div>
+                <span id="aqiStatus" class="status-pill status-neutral">No data</span>
+              </div>
+              <div class="aqi-graphic">
+                <div class="aqi-ring"><span>◌</span></div>
+                <div class="ring-caption">AIR<br>QUALITY</div>
+              </div>
+            </div>
+            <div class="meter"><span id="aqiMeter"></span></div>
+            <div id="aqiDescription" class="card-footnote">No readings recorded yet</div>
+          </article>
 
-$("addUserBtn").addEventListener("click", () => {
-  showToast("Create real accounts after connecting the PHP authentication API.");
-});
+          <article class="metric-card panel">
+            <div class="metric-card-head"><span>Latest PM2.5</span><span class="metric-icon blue">◌</span></div>
+            <div class="metric-value"><strong id="pm25Value">—</strong><small>µg/m³</small></div>
+            <p>Fine particulate matter</p><div class="metric-line"><span></span></div>
+          </article>
 
-/* Theme */
-$("themeToggle").addEventListener("click", () => {
-  document.body.classList.toggle("light-theme");
-  const isLight = document.body.classList.contains("light-theme");
-  $("themeToggle").textContent = isLight ? "☾" : "☼";
+          <article class="metric-card panel">
+            <div class="metric-card-head"><span>Latest PM10</span><span class="metric-icon violet">◍</span></div>
+            <div class="metric-value"><strong id="pm10Value">—</strong><small>µg/m³</small></div>
+            <p>Coarse particulate matter</p><div class="metric-line blue-line"><span></span></div>
+          </article>
 
-  try {
-    localStorage.setItem("aetheriq_theme", isLight ? "light" : "dark");
-  } catch (_) {}
+          <article class="metric-card panel">
+            <div class="metric-card-head"><span>Latest CO</span><span class="metric-icon amber">◎</span></div>
+            <div class="metric-value"><strong id="coValue">—</strong><small>mg/m³</small></div>
+            <p>Carbon monoxide</p><div class="metric-line violet-line"><span></span></div>
+          </article>
+        </div>
 
-  renderTrendChart();
-  if ($("page-reports").classList.contains("active")) renderReports();
-});
+        <div class="section-title-row">
+          <div><h2>Pollutant trends</h2><p>Measurements saved in this workspace</p></div>
+          <select id="chartRange" class="compact-select">
+            <option value="7">Last 7 days</option>
+            <option value="14">Last 14 days</option>
+            <option value="30">Last 30 days</option>
+          </select>
+        </div>
 
-try {
-  if (localStorage.getItem("aetheriq_theme") === "light") {
-    document.body.classList.add("light-theme");
-    $("themeToggle").textContent = "☾";
-  }
-} catch (_) {}
+        <div class="dashboard-grid">
+          <article class="panel chart-panel">
+            <div class="panel-heading">
+              <div><h3>Concentration over time</h3><p>PM2.5, PM10 and NO₂</p></div>
+              <span class="subtle-tag">Recorded values</span>
+            </div>
+            <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+            <div class="chart-legend">
+              <span><i class="legend-dot mint-dot"></i>PM2.5</span>
+              <span><i class="legend-dot blue-dot"></i>PM10</span>
+              <span><i class="legend-dot violet-dot"></i>NO₂</span>
+            </div>
+          </article>
 
-/* Shared refresh */
-function renderAll() {
-  updateRoleUI();
-  populateStationSelect("readingStation");
-  populateStationSelect("reportStation", true);
-  renderOverview();
-  renderReadings();
-  renderStations();
-  renderReports();
-  renderAlerts();
-  renderUsers();
-}
+          <article class="panel distribution-panel">
+            <div class="panel-heading"><div><h3>Reading distribution</h3><p>Records grouped by AQI status</p></div></div>
+            <div id="distributionList" class="distribution-list"></div>
+            <div class="distribution-note">Status is based on the AQI entered with each reading.</div>
+          </article>
+        </div>
 
-/* Keyboard shortcuts and modal escape */
-document.addEventListener("keydown", event => {
-  if (event.key === "Escape") {
-    closeReadingModal();
-    closeStationModal();
-    $("sidebar").classList.remove("open");
-  }
-});
+        <div class="dashboard-grid lower-grid">
+          <article class="panel table-panel">
+            <div class="panel-heading">
+              <div><h3>Recent readings</h3><p>Latest saved measurements</p></div>
+              <button class="text-button" data-page="readings">View all ↗</button>
+            </div>
+            <div class="table-scroll">
+              <table><thead><tr><th>Station / pollutant</th><th>Value</th><th>Status</th><th>Recorded</th></tr></thead><tbody id="recentReadingsBody"></tbody></table>
+            </div>
+          </article>
 
-/* Initialise login screen and dates */
-updateCurrentDate();
-$("loginRole").value = "user";
+          <article class="panel stations-panel">
+            <div class="panel-heading">
+              <div><h3>Monitoring stations</h3><p>Monitored locations</p></div>
+              <span class="station-count" id="stationCount">0</span>
+            </div>
+            <div id="stationPreview"></div>
+            <button class="btn btn-secondary full-width" data-page="stations">Explore stations <span>→</span></button>
+          </article>
+        </div>
+      </section>
+
+      <!-- READINGS -->
+      <section id="page-readings" class="page-section">
+        <div class="page-heading">
+          <div><span class="eyebrow">DATA MANAGEMENT</span><h1>Air readings</h1><p class="muted">Record, review, and maintain pollutant measurements.</p></div>
+          <button class="btn btn-primary admin-only hidden" data-action="add-reading">＋ Add reading</button>
+        </div>
+        <div class="toolbar panel">
+          <div class="search-wrap"><span>⌕</span><input id="readingSearch" type="search" placeholder="Search station, pollutant, or record..."></div>
+          <select id="pollutantFilter">
+            <option value="">All pollutants</option><option>PM2.5</option><option>PM10</option><option>CO</option><option>NO2</option><option>SO2</option><option>O3</option>
+          </select>
+          <select id="statusFilter">
+            <option value="">All statuses</option><option>Good</option><option>Moderate</option><option>Poor</option><option>Unhealthy</option>
+          </select>
+          <button class="btn btn-secondary" id="exportReadings">↓ Export CSV</button>
+        </div>
+        <div class="panel table-panel">
+          <div class="panel-heading"><div><h3>Measurement records</h3><p id="readingCount">0 records</p></div></div>
+          <div class="table-scroll">
+            <table><thead><tr><th>Record / station</th><th>Pollutant</th><th>Value</th><th>AQI</th><th>Status</th><th>Recorded at</th><th>Actions</th></tr></thead><tbody id="readingsBody"></tbody></table>
+          </div>
+          <div id="readingsEmpty" class="empty-state hidden">No readings match your filters.</div>
+        </div>
+      </section>
+
+      <!-- STATIONS -->
+      <section id="page-stations" class="page-section">
+        <div class="page-heading">
+          <div><span class="eyebrow">LOCATION NETWORK</span><h1>Monitoring stations</h1><p class="muted">Manage locations where environmental readings are recorded.</p></div>
+          <button class="btn btn-primary admin-only hidden" data-action="add-station">＋ Add station</button>
+        </div>
+        <div class="station-summary-grid">
+          <div class="panel summary-mini"><span class="metric-icon mint">⌖</span><div><strong id="stationTotal">0</strong><small>Total stations</small></div></div>
+          <div class="panel summary-mini"><span class="metric-icon blue">⌁</span><div><strong id="activeStationTotal">0</strong><small>Active stations</small></div></div>
+          <div class="panel summary-mini"><span class="metric-icon violet">▤</span><div><strong id="stationReadingsTotal">0</strong><small>Linked readings</small></div></div>
+        </div>
+        <div id="stationsGrid" class="stations-grid"></div>
+      </section>
+
+      <!-- REPORTS -->
+      <section id="page-reports" class="page-section">
+        <div class="page-heading">
+          <div><span class="eyebrow">INSIGHTS & EXPORTS</span><h1>Reports & analytics</h1><p class="muted">Create, download, and manage your report history.</p></div>
+          <button class="btn btn-primary" id="createReportBtn">＋ Create report</button>
+        </div>
+        <div class="report-kpis">
+          <div class="panel report-kpi"><span class="metric-icon mint">▤</span><div><strong id="reportTotal">0</strong><small>Saved reports</small></div></div>
+          <div class="panel report-kpi"><span class="metric-icon blue">⌁</span><div><strong id="reportReadingsTotal">0</strong><small>Readings available</small></div></div>
+          <div class="panel report-kpi"><span class="metric-icon amber">♧</span><div><strong id="reportAlertTotal">0</strong><small>Active alerts</small></div></div>
+        </div>
+        <div class="panel table-panel">
+          <div class="panel-heading">
+            <div><h3>Report library</h3><p>Generated report records for this workspace</p></div>
+            <button id="exportAllData" class="btn btn-secondary">↓ Export readings CSV</button>
+          </div>
+          <div class="table-scroll">
+            <table><thead><tr><th>Report</th><th>Type</th><th>Period</th><th>Created</th><th>Records</th><th>Actions</th></tr></thead><tbody id="reportsBody"></tbody></table>
+          </div>
+          <div id="reportsEmpty" class="empty-state hidden">No reports created yet. Select “Create report” to add one.</div>
+        </div>
+        <div class="panel report-tip">
+          <div class="tip-icon">✦</div>
+          <div><h3>About your reports</h3><p>Each report stores a title, report type, date range, creation time, and snapshot count. Export readings to analyse them in spreadsheet software.</p></div>
+        </div>
+      </section>
+
+      <!-- ALERTS -->
+      <section id="page-alerts" class="page-section">
+        <div class="page-heading">
+          <div><span class="eyebrow">ENVIRONMENTAL WATCH</span><h1>Pollution alerts</h1><p class="muted">Create alerts, review pollution events, and resolve items.</p></div>
+          <button class="btn btn-primary" id="createAlertBtn">＋ New alert</button>
+        </div>
+        <div class="alert-summary-grid">
+          <div class="panel summary-mini"><span class="metric-icon amber">♧</span><div><strong id="activeAlertsTotal">0</strong><small>Active alerts</small></div></div>
+          <div class="panel summary-mini"><span class="metric-icon mint">✓</span><div><strong id="resolvedAlertsTotal">0</strong><small>Resolved alerts</small></div></div>
+          <div class="panel summary-mini"><span class="metric-icon violet">⌁</span><div><strong id="highAlertsTotal">0</strong><small>High priority active</small></div></div>
+        </div>
+        <div class="toolbar panel">
+          <div class="search-wrap"><span>⌕</span><input id="alertSearch" type="search" placeholder="Search alert or station..."></div>
+          <select id="alertStatusFilter"><option value="">All statuses</option><option value="Active">Active</option><option value="Resolved">Resolved</option></select>
+          <select id="alertPriorityFilter"><option value="">All priorities</option><option>High</option><option>Medium</option><option>Low</option></select>
+        </div>
+        <div id="alertsList" class="alerts-list"></div>
+      </section>
+
+      <!-- USERS -->
+      <section id="page-users" class="page-section">
+        <div class="page-heading">
+          <div><span class="eyebrow">ACCESS CONTROL</span><h1>User management</h1><p class="muted">Manage preview accounts in this browser. Secure account controls come with the backend.</p></div>
+          <button id="addUserBtn" class="btn btn-primary">＋ Add user</button>
+        </div>
+        <div class="panel table-panel">
+          <div class="panel-heading"><div><h3>Workspace accounts</h3><p>Accounts stored in this browser preview</p></div></div>
+          <div class="table-scroll"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Actions</th></tr></thead><tbody id="usersBody"></tbody></table></div>
+        </div>
+      </section>
+
+      <footer class="app-footer">
+        <span>© <span id="year"></span> AirMetric</span>
+        <span>Environmental Monitoring · Frontend preview</span>
+      </footer>
+    </main>
+  </div>
+
+  <!-- REUSABLE MODAL -->
+  <div id="modalBackdrop" class="modal-backdrop hidden">
+    <div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <div><span class="eyebrow">AIRMETRIC WORKSPACE</span><h2 id="modalTitle">Create record</h2></div>
+        <button id="closeModal" class="icon-button" aria-label="Close dialog">×</button>
+      </div>
+      <form id="modalForm">
+        <div id="modalFields" class="modal-fields"></div>
+        <p id="modalError" class="form-error"></p>
+        <div class="modal-actions">
+          <button type="button" id="cancelModal" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveModal">Save record <span>↗</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toastRegion" class="toast-region" aria-live="polite"></div>
+  <script src="script.js"></script>
+</body>
+</html>
