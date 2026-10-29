@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#eaf2ff" />
+  <title>AirSense | Air Quality Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div id="loginScreen" class="login-screen">
+    <div class="orb orb-one"></div><div class="orb orb-two"></div><div class="orb orb-three"></div>
+    <button id="themeToggleLogin" class="icon-button theme-login" aria-label="Toggle theme">☾</button>
+    <main class="login-card">
+      <div class="brand-mark"><span class="brand-flame">✦</span></div>
+      <div class="eyebrow">AIRSENSE ANALYTICS</div>
+      <h1>Welcome back</h1>
+      <p class="login-subtitle">Sign in to continue to your air quality workspace.</p>
+      <div class="role-switch" role="group" aria-label="Choose account type">
+        <button class="role-option active" data-role="user" type="button"><span>♙</span> User</button>
+        <button class="role-option" data-role="admin" type="button"><span>⌘</span> Admin</button>
+      </div>
+      <form id="loginForm">
+        <label for="loginEmail">Username or email</label>
+        <div class="field-wrap"><span class="field-icon">♙</span><input id="loginEmail" name="username" autocomplete="username" placeholder="Enter your username" required /></div>
+        <label for="loginPassword">Password</label>
+        <div class="field-wrap"><span class="field-icon">▣</span><input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required /><button id="togglePassword" class="reveal-password" type="button" aria-label="Show password">◉</button></div>
+        <div class="form-options"><label class="remember"><input type="checkbox" id="rememberMe" checked /> <span>Remember me</span></label><button type="button" id="forgotPassword" class="text-button">Need help signing in?</button></div>
+        <p id="loginError" class="form-message" aria-live="polite"></p>
+        <button class="primary-button login-submit" type="submit">Sign in <span>→</span></button>
+      </form>
+      <div class="login-divider"><span></span> AIR QUALITY INSIGHTS <span></span></div>
+      <div class="login-points"><span>◈ Sensor readings</span><span>⌁ Historical trends</span><span>◎ Better decisions</span></div>
+      <p class="login-footer">Monitor the air. Understand the patterns.</p>
+    </main>
+  </div>
+
+  <div id="appShell" class="app-shell hidden">
+    <aside id="sidebar" class="sidebar">
+      <a href="#overview" class="sidebar-brand"><span class="mini-brand">✦</span><span>AirSense<small>QUALITY INTELLIGENCE</small></span></a>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav class="main-nav" aria-label="Main navigation">
+        <button class="nav-link active" data-view="overview"><span>▦</span> Overview</button>
+        <button class="nav-link" data-view="history"><span>◷</span> Historical readings</button>
+        <button class="nav-link" data-view="sensors"><span>◉</span> Sensors <span class="nav-count" id="sensorNavCount">4</span></button>
+        <button class="nav-link" data-view="comparison"><span>⇄</span> Compare monitors</button>
+        <button class="nav-link admin-only hidden" data-view="manage"><span>⚙</span> Manage readings</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="air-tip"><span class="tip-icon">✧</span><strong>Air quality tip</strong><p>Check particulate levels before planning outdoor activities.</p></div>
+        <button id="logoutButton" class="logout-button"><span>↪</span> Sign out</button>
+        <div class="profile-row"><div class="avatar" id="profileAvatar">U</div><div class="profile-text"><strong id="profileName">User</strong><small id="profileRole">USER ACCOUNT</small></div><span class="profile-dots">•••</span></div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button id="mobileMenu" class="icon-button mobile-menu" aria-label="Open menu">☰</button>
+        <div class="breadcrumb">Workspace <span>/</span> <strong id="breadcrumbCurrent">Overview</strong></div>
+        <div class="topbar-actions"><span class="status-pill"><i></i> Monitoring active</span><button id="themeToggle" class="icon-button" aria-label="Toggle theme">☾</button><div class="top-avatar" id="topAvatar">U</div></div>
+      </header>
+
+      <section id="view-overview" class="view active-view">
+        <div class="page-heading"><div><p class="eyebrow">THURSDAY, OCTOBER 29, 2026</p><h1>Air quality overview</h1><p class="muted">Here’s what the air looks like across your monitored locations.</p></div><button id="exportButton" class="secondary-button">⇩ Export report</button></div>
+        <div class="welcome-strip"><div><span class="welcome-kicker">YOUR ENVIRONMENT, AT A GLANCE</span><h2>Breathe easier with better insights.</h2><p>Review current conditions and explore changes over time.</p></div><div class="strip-art" aria-hidden="true"><span class="art-ring ring-a"></span><span class="art-ring ring-b"></span><span class="art-leaf">〰</span></div></div>
+        <div class="section-heading"><div><h2>Key indicators</h2><p class="muted">Latest recorded measurements</p></div><span class="updated-label"><i></i> Updated from stored readings</span></div>
+        <div class="metrics-grid">
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon blue">◉</span><span class="metric-label">Air Quality Index</span><span class="metric-menu">•••</span></div><div class="metric-value-row"><strong id="metricAqi">42</strong><span id="aqiStatus" class="quality-tag good">Good</span></div><div class="metric-foot"><span class="mini-trend positive">↘ 8%</span><span>vs. previous period</span></div><div class="metric-spark spark-blue"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon violet">✧</span><span class="metric-label">PM2.5</span><span class="metric-menu">•••</span></div><div class="metric-value-row"><strong id="metricPm">12.4</strong><span class="metric-unit">µg/m³</span></div><div class="metric-foot"><span class="mini-trend positive">↘ 3%</span><span>vs. previous period</span></div><div class="metric-spark spark-violet"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon green">♧</span><span class="metric-label">Carbon dioxide</span><span class="metric-menu">•••</span></div><div class="metric-value-row"><strong id="metricCo2">418</strong><span class="metric-unit">ppm</span></div><div class="metric-foot"><span class="mini-trend neutral">→ 0.4%</span><span>vs. previous period</span></div><div class="metric-spark spark-green"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon orange">♨</span><span class="metric-label">Temperature</span><span class="metric-menu">•••</span></div><div class="metric-value-row"><strong id="metricTemp">26.2</strong><span class="metric-unit">°C</span></div><div class="metric-foot"><span class="mini-trend positive">↘ 1.2°</span><span>vs. previous period</span></div><div class="metric-spark spark-orange"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+        </div>
+        <div class="content-grid">
+          <article class="panel trend-panel"><div class="panel-heading"><div><h2>Air quality trends</h2><p class="muted">Track changes in your environment</p></div><select id="trendRange" class="select-control" aria-label="Trend range"><option value="7">Last 7 days</option><option value="14">Last 14 days</option><option value="30">Last 30 days</option></select></div><div class="chart-legend"><span><i class="legend-dot blue-dot"></i> AQI</span><span><i class="legend-dot purple-dot"></i> PM2.5</span></div><div class="chart-wrap"><canvas id="trendChart" aria-label="Air quality trend chart"></canvas></div></article>
+          <article class="panel distribution-panel"><div class="panel-heading"><div><h2>Air quality status</h2><p class="muted">Reading distribution</p></div><button class="icon-button subtle-icon" aria-label="More options">•••</button></div><div class="donut-wrap"><canvas id="statusChart" aria-label="Air quality status distribution"></canvas><div class="donut-center"><strong id="totalReadings">128</strong><span>readings</span></div></div><div class="status-legend"><div><span><i class="legend-dot green-dot"></i> Good</span><strong id="goodCount">68%</strong></div><div><span><i class="legend-dot yellow-dot"></i> Moderate</span><strong id="moderateCount">24%</strong></div><div><span><i class="legend-dot red-dot"></i> Unhealthy</span><strong id="unhealthyCount">8%</strong></div></div></article>
+        </div>
+        <div class="section-heading sensor-section-heading"><div><h2>Monitored locations</h2><p class="muted">A quick look at your connected sensors</p></div><button class="text-button" data-goto="sensors">View all sensors →</button></div>
+        <div id="locationCards" class="location-grid"></div>
+        <article class="panel recent-panel"><div class="panel-heading"><div><h2>Recent readings</h2><p class="muted">The latest sensor measurements in your workspace</p></div><button class="text-button" data-goto="history">View history →</button></div><div class="table-scroll"><table><thead><tr><th>Location / sensor</th><th>Recorded at</th><th>AQI</th><th>PM2.5</th><th>Temperature</th><th>Status</th></tr></thead><tbody id="recentTableBody"></tbody></table></div></article>
+      </section>
+
+      <section id="view-history" class="view"><div class="page-heading"><div><p class="eyebrow">DATA EXPLORER</p><h1>Historical readings</h1><p class="muted">Search, filter and review previously recorded sensor data.</p></div><button id="historyExportButton" class="secondary-button">⇩ Export CSV</button></div><article class="panel filter-panel"><div class="filter-grid"><div class="filter-field"><label for="historySearch">Search readings</label><input id="historySearch" class="input-control" placeholder="Location or sensor ID" /></div><div class="filter-field"><label for="historyStatus">Air quality status</label><select id="historyStatus" class="select-control"><option value="all">All statuses</option><option value="Good">Good</option><option value="Moderate">Moderate</option><option value="Unhealthy">Unhealthy</option></select></div><div class="filter-field"><label for="historyDays">Time period</label><select id="historyDays" class="select-control"><option value="all">All available</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select></div><button id="clearFilters" class="secondary-button filter-clear">Clear filters</button></div></article><article class="panel history-table-panel"><div class="panel-heading"><div><h2>Reading records</h2><p class="muted" id="historyResultCount">All available records</p></div><span class="record-count" id="historyRecordBadge">0 records</span></div><div class="table-scroll"><table><thead><tr><th>Location</th><th>Sensor ID</th><th>Date & time</th><th>AQI</th><th>PM2.5 (µg/m³)</th><th>CO₂ (ppm)</th><th>Temp (°C)</th><th>Status</th></tr></thead><tbody id="historyTableBody"></tbody></table></div><div id="historyEmpty" class="empty-state hidden">No readings match those filters. Try changing your search.</div></article></section>
+
+      <section id="view-sensors" class="view"><div class="page-heading"><div><p class="eyebrow">CONNECTED DEVICES</p><h1>Sensor locations</h1><p class="muted">Review the readings and connectivity status for each monitored location.</p></div></div><div id="sensorCards" class="sensor-detail-grid"></div></section>
+
+      <section id="view-comparison" class="view"><div class="page-heading"><div><p class="eyebrow">SIDE-BY-SIDE ANALYSIS</p><h1>Compare monitors</h1><p class="muted">Compare air quality indicators across monitored locations.</p></div></div><article class="panel comparison-panel"><div class="panel-heading"><div><h2>Monitor comparison</h2><p class="muted">Latest recorded values by location</p></div></div><div class="table-scroll"><table><thead><tr><th>Indicator</th><th>Hyderabad Central</th><th>Tech Park</th><th>Lake View</th><th>University</th></tr></thead><tbody id="comparisonTableBody"></tbody></table></div></article><div class="content-grid comparison-charts"><article class="panel"><div class="panel-heading"><div><h2>AQI by location</h2><p class="muted">Lower values indicate cleaner air</p></div></div><div class="chart-wrap"><canvas id="comparisonChart"></canvas></div></article><article class="panel insight-panel"><span class="metric-icon blue">✧</span><h2>Understanding the numbers</h2><p class="muted">The Air Quality Index (AQI) summarizes how polluted the air is. PM2.5 measures fine particles, while CO₂ is reported in parts per million (ppm). Compare measurements over time and across locations to spot patterns.</p><div class="insight-scale"><div><i class="scale-green"></i><span><strong>0–50</strong> Good</span></div><div><i class="scale-yellow"></i><span><strong>51–100</strong> Moderate</span></div><div><i class="scale-red"></i><span><strong>101+</strong> Unhealthy</span></div></div></article></div></section>
+
+      <section id="view-manage" class="view"><div class="page-heading"><div><p class="eyebrow">ADMINISTRATION</p><h1>Manage readings</h1><p class="muted">Add sensor records to your workspace or remove incorrect entries.</p></div></div><article class="panel add-reading-panel"><div class="panel-heading"><div><h2>Add a sensor reading</h2><p class="muted">New records are saved in this browser session's local storage.</p></div><span class="admin-chip">ADMIN ACCESS</span></div><form id="addReadingForm" class="reading-form"><div class="filter-field"><label for="readingLocation">Location</label><select id="readingLocation" class="select-control" required><option>Hyderabad Central</option><option>Tech Park</option><option>Lake View</option><option>University</option></select></div><div class="filter-field"><label for="readingSensor">Sensor ID</label><input id="readingSensor" class="input-control" placeholder="e.g. AS-105" required /></div><div class="filter-field"><label for="readingAqi">AQI</label><input id="readingAqi" class="input-control" type="number" min="0" max="500" required placeholder="0–500" /></div><div class="filter-field"><label for="readingPm">PM2.5 (µg/m³)</label><input id="readingPm" class="input-control" type="number" min="0" step="0.1" required placeholder="e.g. 12.4" /></div><div class="filter-field"><label for="readingCo2">CO₂ (ppm)</label><input id="readingCo2" class="input-control" type="number" min="0" required placeholder="e.g. 418" /></div><div class="filter-field"><label for="readingTemp">Temperature (°C)</label><input id="readingTemp" class="input-control" type="number" step="0.1" required placeholder="e.g. 26.2" /></div><button class="primary-button form-submit" type="submit">＋ Save reading</button><p id="addReadingMessage" class="form-message" aria-live="polite"></p></form></article><article class="panel admin-records-panel"><div class="panel-heading"><div><h2>Manage stored records</h2><p class="muted">Remove a record if it was entered incorrectly.</p></div></div><div class="table-scroll"><table><thead><tr><th>Location</th><th>Sensor ID</th><th>Recorded at</th><th>AQI</th><th>Status</th><th>Action</th></tr></thead><tbody id="adminTableBody"></tbody></table></div></article></section>
+      <footer class="app-footer"><span>AirSense · Air Quality Sensor Readings and Historical Analysis</span><span>Environmental insights for informed decisions</span></footer>
+    </main>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
