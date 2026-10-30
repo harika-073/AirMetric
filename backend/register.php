@@ -43,7 +43,7 @@ if ($stmt->execute()) {
     http_response_code(400);
     echo json_encode([
         "success" => false,
-        "message" => "Registration failed. Email may already exist."
+        "message" => $stmt->error
     ]);
 }
 
