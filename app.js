@@ -146,17 +146,47 @@ function setRole(role) {
   }
 }
 
-function login(event) {
+
+async function login(event) {
   event.preventDefault();
 
-  const username = $("#loginEmail").value.trim();
+  const email = $("#loginEmail").value.trim();
   const password = $("#loginPassword").value;
   const error = $("#loginError");
 
-  if (!username || !password) {
-    error.textContent = "Enter your username and password to continue.";
+  if (!email || !password) {
+    error.textContent = "Enter your email and password.";
     return;
   }
+
+  error.textContent = "Checking login...";
+
+  try {
+    const result = await loginUser(email, password, selectedRole);
+
+    if (!result.success) {
+      error.textContent = result.message || "Invalid email or password.";
+      return;
+    }
+
+    currentUser = {
+      id: result.user.id,
+      name: result.user.name,
+      email: result.user.email,
+      role: result.user.role
+    };
+
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+
+    error.textContent = "";
+    showApp();
+
+  } catch (error) {
+    console.error("Login error:", error);
+    error.textContent = "Cannot connect to server. Check your API URL.";
+  }
+}
+
 
   /*
    * This selects the requested interface.
