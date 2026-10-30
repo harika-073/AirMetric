@@ -1,45 +1,5 @@
 
 /* AirSense - Air Quality Sensor Readings and Historical Analysis */
-const API_URL = "https://airmetric2026.gt.tc/api";
-async function login(event) {
-  event.preventDefault();
-
-  const email = $("#loginEmail").value.trim();
-  const password = $("#loginPassword").value;
-  const error = $("#loginError");
-
-  if (!email || !password) {
-    error.textContent = "Enter your email and password.";
-    return;
-  }
-
-  error.textContent = "Checking login...";
-
-  try {
-    const result = await loginUser(email, password, selectedRole);
-
-    if (!result.success) {
-      error.textContent = result.message || "Invalid email or password.";
-      return;
-    }
-
-    currentUser = {
-      id: result.user.id,
-      name: result.user.name,
-      email: result.user.email,
-      role: result.user.role
-    };
-
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
-
-    error.textContent = "";
-    showApp();
-
-  } catch (err) {
-    console.error("Login error:", err);
-    error.textContent = "Cannot connect to server. Check your API URL.";
-  }
-}
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -47,7 +7,7 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const STORAGE_KEY = "airsense_readings_v1";
 const SESSION_KEY = "airsense_session_v1";
 
-let selectedRole = "user"; 
+let selectedRole = "user";
 let currentUser = null;
 let trendChart = null;
 let statusChart = null;
@@ -186,47 +146,17 @@ function setRole(role) {
   }
 }
 
-
-async function login(event) {
+function login(event) {
   event.preventDefault();
 
-  const email = $("#loginEmail").value.trim();
+  const username = $("#loginEmail").value.trim();
   const password = $("#loginPassword").value;
   const error = $("#loginError");
 
-  if (!email || !password) {
-    error.textContent = "Enter your email and password.";
+  if (!username || !password) {
+    error.textContent = "Enter your username and password to continue.";
     return;
   }
-
-  error.textContent = "Checking login...";
-
-  try {
-    const result = await loginUser(email, password, selectedRole);
-
-    if (!result.success) {
-      error.textContent = result.message || "Invalid email or password.";
-      return;
-    }
-
-    currentUser = {
-      id: result.user.id,
-      name: result.user.name,
-      email: result.user.email,
-      role: result.user.role
-    };
-
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
-
-    error.textContent = "";
-    showApp();
-
-  } catch (error) {
-    console.error("Login error:", error);
-    error.textContent = "Cannot connect to server. Check your API URL.";
-  }
-}
-
 
   /*
    * This selects the requested interface.
@@ -875,53 +805,3 @@ document.addEventListener("DOMContentLoaded", () => {
     console.error("Application initialization failed:", error);
   }
 });
-
-const API_URL = "https://YOUR-INFINITYFREE-DOMAIN/api";
-
-// Register user
-// Register a new user
-async function registerUser(name, email, password) {
-  const response = await fetch(`${API_URL}/register.php`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      name,
-      email,
-      password
-    })
-  });
-
-  const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(result.message || "Registration failed.");
-  }
-
-  return result;
-}
-
-
-// Login existing user
-async function loginUser(email, password, role) {
-  const response = await fetch(`${API_URL}/login.php`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      email,
-      password,
-      role
-    })
-  });
-
-  const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(result.message || "Login failed.");
-  }
-
-  return result;
-}
