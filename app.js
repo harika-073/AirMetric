@@ -7,7 +7,7 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const STORAGE_KEY = "airsense_readings_v1";
 const SESSION_KEY = "airsense_session_v1";
 
-let selectedRole = "user";
+let selectedRole = "user"; 
 let currentUser = null;
 let trendChart = null;
 let statusChart = null;
