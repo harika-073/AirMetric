@@ -1,5 +1,45 @@
 
 /* AirSense - Air Quality Sensor Readings and Historical Analysis */
+const API_URL = "https://airmetric2026.gt.tc/api";
+async function login(event) {
+  event.preventDefault();
+
+  const email = $("#loginEmail").value.trim();
+  const password = $("#loginPassword").value;
+  const error = $("#loginError");
+
+  if (!email || !password) {
+    error.textContent = "Enter your email and password.";
+    return;
+  }
+
+  error.textContent = "Checking login...";
+
+  try {
+    const result = await loginUser(email, password, selectedRole);
+
+    if (!result.success) {
+      error.textContent = result.message || "Invalid email or password.";
+      return;
+    }
+
+    currentUser = {
+      id: result.user.id,
+      name: result.user.name,
+      email: result.user.email,
+      role: result.user.role
+    };
+
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+
+    error.textContent = "";
+    showApp();
+
+  } catch (err) {
+    console.error("Login error:", err);
+    error.textContent = "Cannot connect to server. Check your API URL.";
+  }
+}
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -839,27 +879,49 @@ document.addEventListener("DOMContentLoaded", () => {
 const API_URL = "https://YOUR-INFINITYFREE-DOMAIN/api";
 
 // Register user
+// Register a new user
 async function registerUser(name, email, password) {
-    const response = await fetch(`${API_URL}/register.php`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ name, email, password })
-    });
+  const response = await fetch(`${API_URL}/register.php`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      name,
+      email,
+      password
+    })
+  });
 
-    return await response.json();
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.message || "Registration failed.");
+  }
+
+  return result;
 }
 
-// Login user
-async function loginUser(email, password) {
-    const response = await fetch(`${API_URL}/login.php`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ email, password })
-    });
 
-    return await response.json();
+// Login existing user
+async function loginUser(email, password, role) {
+  const response = await fetch(`${API_URL}/login.php`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      email,
+      password,
+      role
+    })
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.message || "Login failed.");
+  }
+
+  return result;
 }
