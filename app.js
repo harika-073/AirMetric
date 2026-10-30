@@ -805,3 +805,31 @@ document.addEventListener("DOMContentLoaded", () => {
     console.error("Application initialization failed:", error);
   }
 });
+
+const API_URL = "https://YOUR-INFINITYFREE-DOMAIN/api";
+
+// Register user
+async function registerUser(name, email, password) {
+    const response = await fetch(`${API_URL}/register.php`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name, email, password })
+    });
+
+    return await response.json();
+}
+
+// Login user
+async function loginUser(email, password) {
+    const response = await fetch(`${API_URL}/login.php`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email, password })
+    });
+
+    return await response.json();
+}
